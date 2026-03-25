@@ -147,14 +147,14 @@ The report shows each test with its result, timing, and any failure details. Thi
 
 ### Integration with the Pipeline
 
-In Lab 4's deploy workflow, you would add a post-deployment test step:
+These tests are designed to plug into the CI/CD pipeline from Lab 4. You do not need to do this now, but when you are ready to fully automate post-deployment verification, you would open `.github/workflows/deploy.yaml` and add this step after the deployment step:
 
 ```yaml
 - name: Run post-change validation
   run: uv run pytest tests/post_change/ -v --tb=short
 ```
 
-This means every merge to main triggers: validate the data model, generate configs, deploy to devices, then verify the deployment worked. If any post-change test fails, the workflow fails and the team is notified.
+With that addition, the deploy workflow becomes: validate the data model, generate configs, deploy to devices, then automatically run these 31 tests to verify the deployment worked. If any test fails, the workflow fails and the team is notified. For now, you run the tests manually from the command line after deploying.
 
 ## Part 6: Break Something on Purpose
 
