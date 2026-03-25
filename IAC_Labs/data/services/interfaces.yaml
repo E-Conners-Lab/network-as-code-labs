@@ -1,0 +1,58 @@
+# Host-facing interface assignments on leaf and border devices.
+#
+# These define how physical ports connect to servers, firewalls, and
+# other non-fabric devices. Access mode ports carry a single VLAN
+# untagged. Trunk ports carry multiple VLANs tagged for hosts that
+# need connectivity to several segments (dual-homed servers, firewalls).
+
+interfaces:
+  - device: leaf1
+    interface: eth3
+    mode: access
+    vlans:
+      - 10
+    description: "Web server 1"
+
+  - device: leaf1
+    interface: eth4
+    mode: trunk
+    vlans:
+      - 10
+      - 20
+    description: "Dual-homed app and web server"
+
+  - device: leaf2
+    interface: eth3
+    mode: access
+    vlans:
+      - 20
+    description: "App server 1"
+
+  - device: leaf2
+    interface: eth4
+    mode: access
+    vlans:
+      - 30
+    description: "Database server 1"
+
+  - device: border1
+    interface: eth3
+    mode: trunk
+    vlans:
+      - 10
+      - 20
+      - 30
+      - 110
+      - 900
+    description: "External firewall uplink"
+
+  - device: border2
+    interface: eth3
+    mode: trunk
+    vlans:
+      - 10
+      - 20
+      - 30
+      - 110
+      - 900
+    description: "External firewall uplink redundant"

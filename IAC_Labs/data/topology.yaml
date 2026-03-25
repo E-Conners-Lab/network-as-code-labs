@@ -1,0 +1,49 @@
+# Device inventory for the 6-node spine-leaf fabric.
+#
+# Each device declares its role, loopback address, management IP, and
+# BGP ASN. The route_reflector flag controls whether a spine acts as
+# an iBGP route reflector for the EVPN overlay. Only spines should
+# have this set to true.
+
+devices:
+  - name: spine1
+    role: spine
+    loopback: 10.0.0.1/32
+    management_ip: 172.20.20.1/24
+    asn: 65000
+    route_reflector: true
+
+  - name: spine2
+    role: spine
+    loopback: 10.0.0.2/32
+    management_ip: 172.20.20.2/24
+    asn: 65000
+    route_reflector: true
+
+  - name: leaf1
+    role: leaf
+    loopback: 10.0.0.11/32
+    management_ip: 172.20.20.11/24
+    asn: 65000
+    route_reflector: false
+
+  - name: leaf2
+    role: leaf
+    loopback: 10.0.0.12/32
+    management_ip: 172.20.20.12/24
+    asn: 65000
+    route_reflector: false
+
+  - name: border1
+    role: border_leaf
+    loopback: 10.0.0.21/32
+    management_ip: 172.20.20.21/24
+    asn: 65000
+    route_reflector: false
+
+  - name: border2
+    role: border_leaf
+    loopback: 10.0.0.22/32
+    management_ip: 172.20.20.22/24
+    asn: 65000
+    route_reflector: false

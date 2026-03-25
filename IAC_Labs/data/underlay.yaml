@@ -1,0 +1,88 @@
+# OSPF underlay configuration and point-to-point fabric links.
+#
+# The underlay provides IP reachability between all loopbacks in the
+# fabric. Every spine connects to every leaf and border device over
+# /31 point-to-point links running OSPF in area 0. The reference
+# bandwidth is set to 100 Gbps so that 10G and 100G links get
+# meaningful cost differentiation.
+
+ospf:
+  area: "0.0.0.0"
+  reference_bandwidth: 100000
+  authentication: null
+  timers:
+    hello: 10
+    dead: 40
+
+links:
+  - name: spine1-to-leaf1
+    a_device: spine1
+    a_interface: eth1
+    a_ip: 10.0.1.0/31
+    b_device: leaf1
+    b_interface: eth1
+    b_ip: 10.0.1.1/31
+    link_type: point_to_point
+
+  - name: spine1-to-leaf2
+    a_device: spine1
+    a_interface: eth2
+    a_ip: 10.0.1.2/31
+    b_device: leaf2
+    b_interface: eth1
+    b_ip: 10.0.1.3/31
+    link_type: point_to_point
+
+  - name: spine1-to-border1
+    a_device: spine1
+    a_interface: eth3
+    a_ip: 10.0.1.4/31
+    b_device: border1
+    b_interface: eth1
+    b_ip: 10.0.1.5/31
+    link_type: point_to_point
+
+  - name: spine1-to-border2
+    a_device: spine1
+    a_interface: eth4
+    a_ip: 10.0.1.6/31
+    b_device: border2
+    b_interface: eth1
+    b_ip: 10.0.1.7/31
+    link_type: point_to_point
+
+  - name: spine2-to-leaf1
+    a_device: spine2
+    a_interface: eth1
+    a_ip: 10.0.1.8/31
+    b_device: leaf1
+    b_interface: eth2
+    b_ip: 10.0.1.9/31
+    link_type: point_to_point
+
+  - name: spine2-to-leaf2
+    a_device: spine2
+    a_interface: eth2
+    a_ip: 10.0.1.10/31
+    b_device: leaf2
+    b_interface: eth2
+    b_ip: 10.0.1.11/31
+    link_type: point_to_point
+
+  - name: spine2-to-border1
+    a_device: spine2
+    a_interface: eth3
+    a_ip: 10.0.1.12/31
+    b_device: border1
+    b_interface: eth2
+    b_ip: 10.0.1.13/31
+    link_type: point_to_point
+
+  - name: spine2-to-border2
+    a_device: spine2
+    a_interface: eth4
+    a_ip: 10.0.1.14/31
+    b_device: border2
+    b_interface: eth2
+    b_ip: 10.0.1.15/31
+    link_type: point_to_point

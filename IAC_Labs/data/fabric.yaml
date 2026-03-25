@@ -1,0 +1,14 @@
+# Fabric-wide settings for the spine-leaf network.
+#
+# These parameters apply globally across all devices in the fabric.
+# The ASN, protocol selections, and IP ranges defined here constrain
+# what the per-device and per-service configurations can reference.
+
+fabric:
+  name: nac-spine-leaf
+  asn: 65000
+  underlay_protocol: ospf
+  overlay_protocol: bgp_evpn
+  loopback_range: 10.0.0.0/24
+  p2p_range: 10.0.1.0/24
+  management_range: 172.20.20.0/24

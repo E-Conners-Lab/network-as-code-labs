@@ -1,0 +1,53 @@
+# ContainerLab topology for the Network as Code spine-leaf fabric.
+#
+# This defines a 6-node VXLAN/EVPN fabric with two spines (acting as
+# route reflectors), two standard leafs, and two border leafs. Each
+# spine connects to every leaf and border, creating a full mesh between
+# tiers. The management network is auto-provisioned by ContainerLab
+# on the 172.20.20.0/24 subnet.
+#
+# Deploy with: sudo containerlab deploy --topo containerlab/topology.yaml
+# Destroy with: sudo containerlab destroy --topo containerlab/topology.yaml
+
+name: nac-spine-leaf
+
+mgmt:
+  network: nac-mgmt
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  kinds:
+    linux:
+      image: quay.io/frrouting/frr:10.3.1
+
+  nodes:
+    spine1:
+      kind: linux
+      mgmt-ipv4: 172.20.20.1
+    spine2:
+      kind: linux
+      mgmt-ipv4: 172.20.20.2
+    leaf1:
+      kind: linux
+      mgmt-ipv4: 172.20.20.11
+    leaf2:
+      kind: linux
+      mgmt-ipv4: 172.20.20.12
+    border1:
+      kind: linux
+      mgmt-ipv4: 172.20.20.21
+    border2:
+      kind: linux
+      mgmt-ipv4: 172.20.20.22
+
+  links:
+    # Spine1 fabric links
+    - endpoints: ["spine1:eth1", "leaf1:eth1"]
+    - endpoints: ["spine1:eth2", "leaf2:eth1"]
+    - endpoints: ["spine1:eth3", "border1:eth1"]
+    - endpoints: ["spine1:eth4", "border2:eth1"]
+    # Spine2 fabric links
+    - endpoints: ["spine2:eth1", "leaf1:eth2"]
+    - endpoints: ["spine2:eth2", "leaf2:eth2"]
+    - endpoints: ["spine2:eth3", "border1:eth2"]
+    - endpoints: ["spine2:eth4", "border2:eth2"]

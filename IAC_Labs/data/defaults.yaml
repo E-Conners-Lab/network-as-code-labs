@@ -1,0 +1,20 @@
+# Default values applied when not explicitly overridden per device.
+#
+# These defaults reduce repetition across the data model. If 90% of
+# your interfaces use jumbo frames and the same OSPF timers, define
+# them once here instead of repeating on every device. Per-device or
+# per-service overrides always take precedence.
+
+defaults:
+  mtu: 9216
+  fabric_link_mtu: 9216
+  management_mtu: 1500
+  description_prefix: "NaC-Managed"
+  timers:
+    ospf_hello: 10
+    ospf_dead: 40
+    bgp_keepalive: 30
+    bgp_holdtime: 90
+  flooding:
+    mode: head_end_replication
+  arp_suppression: true

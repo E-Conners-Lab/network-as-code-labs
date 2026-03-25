@@ -1,0 +1,11 @@
+[project]
+name = "iac-labs"
+version = "0.1.0"
+description = "Network as Code lab series -- spine-leaf fabric automation with Pydantic, Scrapli, and Jinja2"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic==2.11.4",
+    "pyyaml==6.0.2",
+    "rich==14.0.0",
+    "types-pyyaml==6.0.12.20250402",
+]

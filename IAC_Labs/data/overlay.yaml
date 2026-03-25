@@ -1,0 +1,20 @@
+# BGP EVPN overlay configuration.
+#
+# The overlay runs iBGP with the EVPN address family across all fabric
+# devices. Both spines act as route reflectors, so leafs and borders
+# only need to peer with the spines rather than forming a full mesh.
+# The cluster_id for each route reflector is set to its loopback address.
+
+bgp:
+  address_families:
+    - evpn
+    - ipv4_unicast
+  timers:
+    keepalive: 30
+    holdtime: 90
+
+route_reflectors:
+  - device: spine1
+    cluster_id: 10.0.0.1
+  - device: spine2
+    cluster_id: 10.0.0.2
