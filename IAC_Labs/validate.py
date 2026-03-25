@@ -1,168 +1,55 @@
 """Validation entry point for the Network as Code data model.
 
-Loads all YAML files from the data directory and runs them through the
-Pydantic schema models in two stages. Stage 1 validates each file
-individually against its own schema. Stage 2 composes all validated
-models into the FabricDataModel and runs cross-file checks that catch
-referential integrity errors like a network pointing to a VRF that
-does not exist or a link referencing a device not in the topology.
+Runs all four validation layers in order: format, syntax, semantic, and
+compliance. Each layer builds on the previous one. If format validation
+fails, syntax cannot run because the YAML is unreadable. If syntax
+fails, semantic cannot run because the data is not structurally valid.
+Compliance runs last because it checks policy conformance on data that
+is already known to be logically correct.
 
 Usage:
     uv run python validate.py
+    uv run python validate.py --html reports/validation-report.html
 """
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
-from typing import Any, TypedDict, cast
 
-import yaml
-from pydantic import BaseModel, ValidationError
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from schemas.models import (
-    DefaultsModel,
-    FabricConfig,
-    FabricDataModel,
-    InterfacesModel,
-    NetworksModel,
-    OverlayModel,
-    TopologyModel,
-    UnderlayModel,
-    VRFsModel,
-)
+from validators import ValidationLevel, ValidationResult, parse_all_files
+from validators.compliance_validator import validate_compliance
+from validators.format_validator import validate_format
+from validators.semantic_validator import validate_semantic
+from validators.syntax_validator import validate_syntax
 
 console = Console()
 
-DATA_DIR = Path(__file__).parent / "data"
+BASE_DIR = Path(__file__).parent
 
 
-class ParsedModels(TypedDict):
-    """Typed container for all validated data model components."""
-
-    fabric: FabricConfig
-    topology: TopologyModel
-    underlay: UnderlayModel
-    overlay: OverlayModel
-    defaults: DefaultsModel
-    vrfs: VRFsModel
-    networks: NetworksModel
-    interfaces: InterfacesModel
-
-
-def load_yaml(file_path: Path) -> dict[str, Any]:
-    """Load and parse a YAML file, raising clear errors on failure."""
-    if not file_path.exists():
-        raise FileNotFoundError(f"Required data file not found: {file_path}")
-
-    with open(file_path) as f:
-        content = yaml.safe_load(f)
-
-    if content is None:
-        raise ValueError(f"Empty YAML file: {file_path}")
-
-    if not isinstance(content, dict):
-        raise ValueError(
-            f"Expected a YAML mapping in {file_path}, "
-            f"got {type(content).__name__}"
-        )
-
-    return content
+def _print_results(title: str, results: list[ValidationResult]) -> bool:
+    """Print results for one validation layer. Returns True if all passed."""
+    console.print(f"[bold]{title}[/bold]")
+    all_passed = True
+    for r in results:
+        if r.passed:
+            console.print(f"  [green]PASS[/green]  {r.rule_id}  {r.message}")
+        else:
+            all_passed = False
+            console.print(f"  [red]FAIL[/red]  {r.rule_id}  {r.message}")
+            for detail in r.details:
+                console.print(f"       [dim]{detail}[/dim]")
+    console.print()
+    return all_passed
 
 
-def _format_validation_errors(exc: ValidationError) -> list[str]:
-    """Turn a Pydantic ValidationError into human-readable lines."""
-    lines: list[str] = []
-    for err in exc.errors():
-        location = ".".join(str(part) for part in err["loc"])
-        lines.append(f"  {location}: {err['msg']}")
-    return lines
-
-
-def validate_individual_files() -> ParsedModels:
-    """Validate each YAML file against its individual Pydantic model.
-
-    Returns a typed dict of validated model instances keyed by component
-    name. Prints pass/fail status for each file. If any file fails
-    validation, prints all errors and exits with code 1.
-    """
-    file_specs: list[tuple[str, Path, type[BaseModel], str | None]] = [
-        ("fabric", DATA_DIR / "fabric.yaml", FabricConfig, "fabric"),
-        ("topology", DATA_DIR / "topology.yaml", TopologyModel, None),
-        ("underlay", DATA_DIR / "underlay.yaml", UnderlayModel, None),
-        ("overlay", DATA_DIR / "overlay.yaml", OverlayModel, None),
-        ("defaults", DATA_DIR / "defaults.yaml", DefaultsModel, "defaults"),
-        ("vrfs", DATA_DIR / "services" / "vrfs.yaml", VRFsModel, None),
-        ("networks", DATA_DIR / "services" / "networks.yaml", NetworksModel, None),
-        (
-            "interfaces",
-            DATA_DIR / "services" / "interfaces.yaml",
-            InterfacesModel,
-            None,
-        ),
-    ]
-
-    parsed: dict[str, Any] = {}
-    failed = False
-
-    for name, path, model_class, root_key in file_specs:
-        relative = path.relative_to(Path.cwd())
-        try:
-            raw = load_yaml(path)
-            data = raw[root_key] if root_key else raw
-            parsed[name] = model_class.model_validate(data)
-
-            console.print(f"  [green]PASS[/green]  {relative}")
-
-        except KeyError:
-            console.print(
-                f"  [red]FAIL[/red]  {relative}: "
-                f"missing required top-level key '{root_key}'"
-            )
-            failed = True
-
-        except (FileNotFoundError, ValueError) as exc:
-            console.print(f"  [red]FAIL[/red]  {relative}: {exc}")
-            failed = True
-
-        except ValidationError as exc:
-            console.print(f"  [red]FAIL[/red]  {relative}")
-            for line in _format_validation_errors(exc):
-                console.print(f"       [dim]{line}[/dim]")
-            failed = True
-
-    if failed:
-        console.print()
-        console.print("[bold red]Individual file validation failed.[/bold red]")
-        sys.exit(1)
-
-    return cast(ParsedModels, parsed)
-
-
-def validate_cross_references(parsed: ParsedModels) -> None:
-    """Run cross-file validation by composing all models into FabricDataModel.
-
-    This catches referential integrity errors: links pointing to
-    nonexistent devices, networks referencing undefined VRFs, IPs
-    outside their designated ranges, and inconsistencies between the
-    topology and overlay route reflector declarations.
-    """
-    try:
-        FabricDataModel.model_validate(parsed)
-        console.print("  [green]PASS[/green]  Cross-reference validation")
-    except ValidationError as exc:
-        console.print("  [red]FAIL[/red]  Cross-reference validation")
-        for line in _format_validation_errors(exc):
-            console.print(f"       [dim]{line}[/dim]")
-        console.print()
-        console.print("[bold red]Cross-reference validation failed.[/bold red]")
-        sys.exit(1)
-
-
-def print_summary(parsed: ParsedModels) -> None:
+def _print_summary(parsed: dict) -> None:
     """Print a summary table of the validated data model."""
     topology = parsed["topology"]
     underlay = parsed["underlay"]
@@ -189,29 +76,82 @@ def print_summary(parsed: ParsedModels) -> None:
     table.add_row("Network Segments", str(len(networks.networks)))
     table.add_row("Interface Assignments", str(len(interfaces.interfaces)))
 
-    console.print()
     console.print(table)
 
 
 def main() -> None:
-    """Run the full validation pipeline against the data model."""
+    """Run the full four-layer validation pipeline."""
+    parser = argparse.ArgumentParser(description="Validate the NaC data model")
+    parser.add_argument(
+        "--html",
+        type=str,
+        default=None,
+        help="Generate an HTML report at the given path (requires pytest)",
+    )
+    args = parser.parse_args()
+
+    if args.html:
+        import subprocess
+
+        report_path = Path(args.html)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        result = subprocess.run(
+            [
+                sys.executable, "-m", "pytest",
+                "--html", str(report_path),
+                "--self-contained-html",
+                "-v",
+            ],
+            cwd=str(BASE_DIR),
+        )
+        sys.exit(result.returncode)
+
     console.print()
     console.print(
         Panel("[bold]Network as Code -- Data Model Validation[/bold]", expand=False)
     )
     console.print()
 
-    console.print("[bold]Stage 1: Individual File Validation[/bold]")
-    parsed = validate_individual_files()
+    # Layer 1: Format
+    format_results = validate_format(BASE_DIR)
+    format_ok = _print_results("Layer 1: Format Validation", format_results)
+    if not format_ok:
+        console.print("[bold red]Format validation failed. Fix YAML errors before proceeding.[/bold red]")
+        sys.exit(1)
+
+    # Layer 2: Syntax
+    syntax_results = validate_syntax(BASE_DIR)
+    syntax_ok = _print_results("Layer 2: Syntax Validation", syntax_results)
+    if not syntax_ok:
+        console.print("[bold red]Syntax validation failed. Fix schema errors before proceeding.[/bold red]")
+        sys.exit(1)
+
+    # Parse models for semantic and compliance layers
+    parsed, parse_errors = parse_all_files(BASE_DIR)
+    if parse_errors:
+        for e in parse_errors:
+            console.print(f"  [red]FAIL[/red]  {e.rule_id}  {e.message}")
+        sys.exit(1)
+
+    # Layer 3: Semantic
+    semantic_results = validate_semantic(parsed)
+    semantic_ok = _print_results("Layer 3: Semantic Validation", semantic_results)
+    if not semantic_ok:
+        console.print("[bold red]Semantic validation failed. Fix logical inconsistencies.[/bold red]")
+        sys.exit(1)
+
+    # Layer 4: Compliance
+    compliance_results = validate_compliance(parsed)
+    compliance_ok = _print_results("Layer 4: Compliance Validation", compliance_results)
+    if not compliance_ok:
+        console.print("[bold red]Compliance validation failed. Fix policy violations.[/bold red]")
+        sys.exit(1)
+
+    _print_summary(parsed)
+
+    total = len(format_results) + len(syntax_results) + len(semantic_results) + len(compliance_results)
     console.print()
-
-    console.print("[bold]Stage 2: Cross-Reference Validation[/bold]")
-    validate_cross_references(parsed)
-
-    print_summary(parsed)
-
-    console.print()
-    console.print("[bold green]All validations passed.[/bold green]")
+    console.print(f"[bold green]All {total} checks passed across 4 validation layers.[/bold green]")
     console.print()
 
 

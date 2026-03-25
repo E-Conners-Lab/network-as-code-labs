@@ -42,3 +42,11 @@ htmlcov/
 .coverage
 .pytest_cache/
 *.xml
+reports/
+configs/
+configs-ansible/
+configs-tf/
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl

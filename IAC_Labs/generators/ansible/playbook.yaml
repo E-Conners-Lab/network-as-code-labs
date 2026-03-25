@@ -1,0 +1,29 @@
+# Ansible playbook for FRR configuration generation.
+#
+# This playbook renders FRR configs locally to files using role-specific
+# templates. It does not connect to any devices. The output lands in
+# configs-ansible/ at the project root, one file per device.
+#
+# Usage:
+#   cd generators/ansible
+#   ansible-playbook -i inventory.yaml playbook.yaml
+
+---
+- name: Generate FRR configurations for all devices
+  hosts: all
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Ensure output directory exists
+      ansible.builtin.file:
+        path: "{{ playbook_dir }}/../../configs-ansible"
+        state: directory
+        mode: "0755"
+      run_once: true
+
+    - name: Render FRR configuration
+      ansible.builtin.template:
+        src: "{{ role_template }}"
+        dest: "{{ playbook_dir }}/../../configs-ansible/{{ inventory_hostname }}.conf"
+        mode: "0644"

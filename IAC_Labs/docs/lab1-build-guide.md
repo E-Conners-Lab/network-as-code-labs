@@ -133,20 +133,95 @@ uv --version
 
 If any of these fail, fix it before moving on. Every step after this depends on all four being present.
 
-## Part 3: Clone the Repository and Set Up the Project
+## Part 3: Initialize the Project
+
+Create the project directory and initialize it with uv:
 
 ```bash
-git clone https://github.com/E-Conners-Lab/network-as-code-labs.git
-cd network-as-code-labs
+mkdir -p ~/network-as-code-labs
+cd ~/network-as-code-labs
+uv init --name iac-labs
 ```
 
-Install the Python dependencies:
+This creates a `pyproject.toml` and a basic project structure. Now add the dependencies we need for Lab 1:
 
 ```bash
-uv sync
+uv add "pydantic==2.11.4" "pyyaml==6.0.2" "rich==14.0.0" "types-pyyaml==6.0.12.20250402"
 ```
 
-This reads `pyproject.toml`, resolves against `uv.lock`, creates a `.venv`, and installs everything. It takes a few seconds.
+Notice the exact version pins. No `^` or `~` ranges. Every dependency is locked to a specific version so that the project builds identically on every machine. The `uv.lock` file records the full resolution and should be committed to Git.
+
+### Initialize Git
+
+This is a good time to set up version control. The entire point of Network as Code is that your network intent lives in a repository, versioned and reviewable like any other code.
+
+```bash
+git init
+git branch -M main
+```
+
+Create a `.gitignore` so that Python artifacts, virtual environments, and secrets never end up in the repository:
+
+```bash
+cat > .gitignore << 'EOF'
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ContainerLab
+clab-*/
+*.bak
+
+# Linter caches
+.ruff_cache/
+.mypy_cache/
+
+# Test artifacts
+htmlcov/
+.coverage
+.pytest_cache/
+*.xml
+reports/
+
+# Generated configs
+configs/
+configs-ansible/
+configs-tf/
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+EOF
+```
+
+The `.gitignore` is worth pausing on. The `.env` entry is a security requirement. Device credentials, API tokens, and anything sensitive goes in environment variables or `.env` files that are excluded from the repository. The `configs/` entries exclude generated output because the source of truth is the data model, not the rendered configs. The `clab-*/` entry excludes ContainerLab runtime state.
 
 ## Part 4: Explore the Data Model
 
@@ -212,54 +287,42 @@ uv run python validate.py
 
 You should see all eight files pass individual validation, then cross-reference validation pass, followed by a summary table showing 6 devices, 8 links, 2 route reflectors, 3 VRFs, 5 networks, and 6 interface assignments.
 
-### Break Something on Purpose
+The point here is that the data model is not just documentation. It is a machine-verifiable contract. Every file has a schema, and the schemas reference each other. A network segment points to a VRF by name. An interface assignment points to a device and a VLAN. The validator checks all of these cross-references in one pass. If something does not line up, you find out now instead of after pushing config to a router.
 
-This is the demo that sells the concept. Open one of the data files and introduce an error, then re-run validation to show it catching the mistake.
+Lab 2 builds a full four-layer validation framework on top of this foundation, with rule IDs, pytest integration, and detailed error reporting. For now, seeing all checks pass confirms the data model is solid.
 
-**Example 1: Overlapping subnets**
+## Part 6: First Git Commit
 
-Edit `data/services/networks.yaml` and change the dev-general subnet to overlap with prod-web:
+The data model is built and validated. This is the right time for the first commit. Everything in the repository at this point is the foundation that every subsequent lab builds on.
 
-```yaml
-  - name: dev-general
-    vni: 20010
-    vlan_id: 110
-    subnet: 10.100.10.0/24    # overlaps with prod-web
-    gateway: 10.100.10.1
-    vrf: DEVELOPMENT
-    description: "Development general purpose"
+Check what Git sees:
+
+```bash
+git status
 ```
 
-Run `uv run python validate.py` and watch it flag the subnet overlap between dev-general and prod-web.
+You should see the data files, schemas, ContainerLab topology, validate.py, pyproject.toml, uv.lock, and .gitignore as untracked files. Stage and commit them:
 
-**Example 2: Reference a VRF that does not exist**
-
-Edit `data/services/networks.yaml` and change a VRF reference to something undefined:
-
-```yaml
-    vrf: STAGING    # this VRF does not exist in vrfs.yaml
+```bash
+git add .
+git status
 ```
 
-The cross-reference validator catches it: "Network 'prod-web' references undefined VRF 'STAGING'".
+Review the staged files. You should not see any `.env` files, `__pycache__/` directories, or `.venv/` in the list. The `.gitignore` is doing its job.
 
-**Example 3: Assign a host-facing interface to a spine**
-
-Edit `data/services/interfaces.yaml` and change a device to spine1:
-
-```yaml
-  - device: spine1
-    interface: eth3
-    mode: access
-    vlans:
-      - 10
-    description: "This should not be on a spine"
+```bash
+git commit -m "Lab 1: data model, Pydantic schemas, and ContainerLab topology"
 ```
 
-The validator flags it: "Interface assignment on spine device 'spine1'. Host-facing interfaces belong on leaf or border devices only."
+Check the log:
 
-Revert each change after demonstrating it so the data model is clean for the next step.
+```bash
+git log --oneline
+```
 
-## Part 6: Deploy the ContainerLab Topology
+One commit. The entire network intent for a 6-node spine-leaf fabric, validated and version-controlled. Every change from here forward is a diff against this baseline. When Lab 4 introduces CI/CD, this repository becomes the trigger for automated validation and deployment pipelines.
+
+## Part 7: Deploy the ContainerLab Topology
 
 Now bring up the actual routers. This creates six FRR containers connected in the spine-leaf topology.
 
@@ -295,15 +358,17 @@ sudo containerlab destroy --topo containerlab/topology.yaml
 
 This removes all containers and virtual links but preserves the data on disk. You can redeploy at any time.
 
-## Part 7: What We Proved
+## Part 8: What We Proved
 
-By the end of this lab you have demonstrated three things.
+By the end of this lab you have demonstrated four things.
 
 First, that network intent can be expressed as structured YAML data. The six files in `data/` describe the entire fabric without a single router CLI command. This is the "single source of truth" concept.
 
 Second, that schema validation catches errors before they reach the network. Overlapping subnets, undefined VRF references, duplicate loopbacks, interfaces on the wrong device role -- all caught at the data layer. The paper that inspired this series cites 80%+ of network issues coming from misconfigurations. A validated data model eliminates an entire class of those.
 
 Third, that the gap between "data model" and "running routers" is bridgeable. The same topology defined in YAML is running as containers you can SSH into. Labs 2 through 7 close this gap progressively: validation, config generation, CI/CD pipelines, post-change testing, drift detection, and AI-assisted operations.
+
+Fourth, that version control is part of the workflow from day one. The data model lives in Git. Every change is a commit. Every commit is a reviewable diff. This is the foundation that makes CI/CD possible in Lab 4. You cannot have automated pipelines without a repository to trigger them.
 
 ## Troubleshooting
 

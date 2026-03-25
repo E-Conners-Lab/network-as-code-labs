@@ -1,0 +1,30 @@
+# Variables shared across all device groups.
+# These map directly to fabric.yaml and defaults.yaml in the data model.
+
+fabric_name: nac-spine-leaf
+fabric_asn: 65000
+underlay_protocol: ospf
+overlay_protocol: bgp_evpn
+
+ospf:
+  area: "0.0.0.0"
+  reference_bandwidth: 100000
+  hello_interval: 10
+  dead_interval: 40
+
+bgp:
+  keepalive: 30
+  holdtime: 90
+
+defaults:
+  fabric_link_mtu: 9216
+  management_mtu: 1500
+  description_prefix: "NaC-Managed"
+  arp_suppression: true
+
+# Route reflector loopbacks (used by non-RR devices for peering)
+route_reflector_peers:
+  - name: spine1
+    ip: 10.0.0.1
+  - name: spine2
+    ip: 10.0.0.2

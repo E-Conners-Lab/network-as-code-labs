@@ -23,10 +23,10 @@ topology:
   nodes:
     spine1:
       kind: linux
-      mgmt-ipv4: 172.20.20.1
+      mgmt-ipv4: 172.20.20.101
     spine2:
       kind: linux
-      mgmt-ipv4: 172.20.20.2
+      mgmt-ipv4: 172.20.20.102
     leaf1:
       kind: linux
       mgmt-ipv4: 172.20.20.11

@@ -1,0 +1,13 @@
+{# OSPF underlay routing configuration. #}
+!
+! --- OSPF Underlay ---
+!
+router ospf
+ ospf router-id {{ device.loopback.ip }}
+ auto-cost reference-bandwidth {{ ospf.reference_bandwidth }}
+ passive-interface lo
+ network {{ device.loopback }} area {{ ospf.area }}
+{% for link in links %}
+ network {{ link.ip }} area {{ ospf.area }}
+{% endfor %}
+!

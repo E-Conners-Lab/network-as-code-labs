@@ -1,0 +1,50 @@
+{# VRF and VXLAN/EVPN network segment configuration.
+   Only rendered on leaf and border devices that have VRF assignments.
+#}
+!
+! --- VRF Definitions ---
+!
+{% for vrf in vrfs %}
+vrf {{ vrf.name }}
+ vni {{ vrf.vni }}
+exit-vrf
+!
+{% endfor %}
+!
+! --- EVPN VRF Configuration ---
+!
+router bgp {{ device.asn }}
+{% for vrf in vrfs %}
+ !
+ address-family l2vpn evpn
+  vni {{ vrf.vni }}
+   rd {{ vrf.rd }}
+{% for rt in vrf.rt_import %}
+   route-target import {{ rt }}
+{% endfor %}
+{% for rt in vrf.rt_export %}
+   route-target export {{ rt }}
+{% endfor %}
+  exit-vni
+ exit-address-family
+{% endfor %}
+!
+{% if networks %}
+! --- Network Segments (VXLAN) ---
+!
+{% for net in networks %}
+! {{ net.name }}: VLAN {{ net.vlan_id }}, VNI {{ net.vni }}, {{ net.subnet }}
+interface vxlan{{ net.vni }}
+ vxlan vni {{ net.vni }}
+ bridge access vlan {{ net.vlan_id }}
+!
+interface vlan{{ net.vlan_id }}
+ ip address {{ net.gateway }}/{{ net.subnet.prefixlen }}
+ vrf {{ net.vrf }}
+ description {{ defaults.description_prefix }} {{ net.description }}
+{% if defaults.arp_suppression %}
+ arp-suppress on
+{% endif %}
+!
+{% endfor %}
+{% endif %}
