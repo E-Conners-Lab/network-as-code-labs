@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 5 - Post-Change Validation and Testing</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --accent3: #ff6b35;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --complete: #00ff88;
+    --coming: #475569;
+    --grid: rgba(0, 212, 255, 0.03);
+    --glow: rgba(0, 212, 255, 0.15);
+    --blue: #2563eb;
+    --green: #16a34a;
+    --orange: #ea580c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header .lab-tag {
+    display: inline-block;
+    padding: 4px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .header .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+
+  /* Deployment Arrow */
+  .deploy-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 48px;
+  }
+
+  .deploy-arrow {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 12px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    animation: deployPulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes deployPulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.1); }
+    50% { box-shadow: 0 0 30px rgba(0, 212, 255, 0.25); }
+  }
+
+  .deploy-arrow .icon {
+    font-size: 1.2rem;
+  }
+
+  .deploy-arrow .label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .deploy-connector {
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(180deg, var(--accent), var(--accent2));
+    animation: arrowPulse 2s ease-in-out infinite;
+  }
+
+  .deploy-connector::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--accent2);
+    margin-left: -5px;
+  }
+
+  /* Device row */
+  .device-row {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .device-node {
+    width: 100px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .device-node:hover { transform: scale(1.1); z-index: 10; }
+
+  .device-node.spine {
+    background: linear-gradient(135deg, #1a3a6a, #0d2847);
+    border: 1.5px solid var(--blue);
+    box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
+  }
+
+  .device-node.leaf {
+    background: linear-gradient(135deg, #1a4a3a, #0d3828);
+    border: 1.5px solid var(--green);
+    box-shadow: 0 0 15px rgba(22, 163, 74, 0.2);
+  }
+
+  .device-node.border {
+    background: linear-gradient(135deg, #4a2a1a, #382010);
+    border: 1.5px solid var(--orange);
+    box-shadow: 0 0 15px rgba(234, 88, 12, 0.2);
+  }
+
+  .device-node .node-name { font-size: 0.75rem; }
+  .device-node .node-ip { font-size: 0.6rem; color: var(--text-dim); margin-top: 1px; }
+
+  .device-node .check-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    color: #0a0e17;
+    font-weight: 900;
+  }
+
+  /* Connector lines from devices to panels */
+  .test-connector {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .test-connector svg {
+    width: 100%;
+    max-width: 800px;
+    height: 40px;
+  }
+
+  .test-connector line {
+    stroke: var(--border);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    opacity: 0.5;
+  }
+
+  /* Test category panels */
+  .test-panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 48px;
+  }
+
+  .test-panel {
+    padding: 24px;
+    border-radius: 12px;
+    transition: all 0.3s;
+  }
+
+  .test-panel:hover {
+    transform: translateY(-4px);
+  }
+
+  .test-panel.config {
+    background: linear-gradient(135deg, #1a2a4a, #0d1a35);
+    border: 1.5px solid var(--blue);
+    box-shadow: 0 0 25px rgba(37, 99, 235, 0.15);
+  }
+
+  .test-panel.config:hover {
+    box-shadow: 0 0 40px rgba(37, 99, 235, 0.3);
+  }
+
+  .test-panel.operational {
+    background: linear-gradient(135deg, #1a3a2a, #0d2818);
+    border: 1.5px solid var(--green);
+    box-shadow: 0 0 25px rgba(22, 163, 74, 0.15);
+  }
+
+  .test-panel.operational:hover {
+    box-shadow: 0 0 40px rgba(22, 163, 74, 0.3);
+  }
+
+  .test-panel.health {
+    background: linear-gradient(135deg, #3a2a1a, #281a0d);
+    border: 1.5px solid var(--orange);
+    box-shadow: 0 0 25px rgba(234, 88, 12, 0.15);
+  }
+
+  .test-panel.health:hover {
+    box-shadow: 0 0 40px rgba(234, 88, 12, 0.3);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .panel-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .test-panel.config .panel-title { color: #93c5fd; }
+  .test-panel.operational .panel-title { color: #86efac; }
+  .test-panel.health .panel-title { color: #fdba74; }
+
+  .panel-count {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+  }
+
+  .test-panel.config .panel-count { background: rgba(37, 99, 235, 0.2); color: #93c5fd; }
+  .test-panel.operational .panel-count { background: rgba(22, 163, 74, 0.2); color: #86efac; }
+  .test-panel.health .panel-count { background: rgba(234, 88, 12, 0.2); color: #fdba74; }
+
+  .panel-question {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-style: italic;
+    margin-bottom: 16px;
+  }
+
+  .check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.78rem;
+    padding: 6px 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .check-item:hover {
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  .check-icon {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.55rem;
+    font-weight: 900;
+    flex-shrink: 0;
+  }
+
+  .test-panel.config .check-icon { background: rgba(37, 99, 235, 0.3); color: #93c5fd; }
+  .test-panel.operational .check-icon { background: rgba(22, 163, 74, 0.3); color: #86efac; }
+  .test-panel.health .check-icon { background: rgba(234, 88, 12, 0.3); color: #fdba74; }
+
+  .check-text { color: var(--text); }
+
+  /* Results bar */
+  .results-section {
+    margin-bottom: 48px;
+  }
+
+  .results-bar-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.08);
+  }
+
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .results-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  .results-score {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--accent2);
+  }
+
+  .results-track {
+    width: 100%;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 12px;
+  }
+
+  .results-fill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--green), var(--accent2));
+    border-radius: 6px;
+    animation: fillBar 1.5s ease-out forwards;
+    transform-origin: left;
+  }
+
+  @keyframes fillBar {
+    0% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+  }
+
+  .results-breakdown {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+  }
+
+  .breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+
+  .breakdown-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .breakdown-val {
+    font-weight: 700;
+  }
+
+  /* Highlight quote */
+  .highlight {
+    text-align: center;
+    margin: 40px 0;
+    padding: 24px;
+    border-left: 3px solid var(--accent);
+    border-right: 3px solid var(--accent2);
+    background: linear-gradient(90deg, rgba(0,212,255,0.05), rgba(0,255,136,0.05));
+    border-radius: 8px;
+  }
+
+  .highlight .text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  /* Stats */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin: 48px 0 0 0;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat { text-align: center; }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Animations */
+  @keyframes arrowPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  .fade-in:nth-child(1) { animation-delay: 0.1s; }
+  .fade-in:nth-child(2) { animation-delay: 0.2s; }
+  .fade-in:nth-child(3) { animation-delay: 0.3s; }
+  .fade-in:nth-child(4) { animation-delay: 0.4s; }
+  .fade-in:nth-child(5) { animation-delay: 0.5s; }
+  .fade-in:nth-child(6) { animation-delay: 0.6s; }
+
+  @keyframes panelGlow {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="lab-tag">Lab 05</div>
+    <h1>Post-Change Validation</h1>
+    <div class="subtitle">Proving the Network Actually Works</div>
+  </div>
+
+  <!-- Deployment Section -->
+  <div class="deploy-section">
+    <div class="section-title">Deployment Target: 6-Node FRR Fabric</div>
+
+    <div class="deploy-arrow fade-in">
+      <span class="icon">&#9654;</span>
+      <span class="label">Deploy Configs</span>
+    </div>
+
+    <div class="deploy-connector"></div>
+
+    <div class="device-row">
+      <div class="device-node spine fade-in">
+        <span class="check-badge">&#10003;</span>
+        <span class="node-name">spine1</span>
+        <span class="node-ip">10.0.0.1</span>
+      </div>
+      <div class="device-node spine fade-in">
+        <span class="check-badge">&#10003;</span>
+        <span class="node-name">spine2</span>
+        <span class="node-ip">10.0.0.2</span>
+      </div>
+      <div class="device-node leaf fade-in">
+        <span class="check-badge">&#10003;</span>
+        <span class="node-name">leaf1</span>
+        <span class="node-ip">10.0.0.11</span>
+      </div>
+      <div class="device-node leaf fade-in">
+        <span class="check-badge">&#10003;</span>
+        <span class="node-name">leaf2</span>
+        <span class="node-ip">10.0.0.12</span>
+      </div>
+      <div class="device-node border fade-in">
+        <span class="check-badge">&#10003;</span>
+        <span class="node-name">border1</span>
+        <span class="node-ip">10.0.0.21</span>
+      </div>
+      <div class="device-node border fade-in">
+        <span class="check-badge">&#10003;</span>
+        <span class="node-name">border2</span>
+        <span class="node-ip">10.0.0.22</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Connector Lines -->
+  <div class="test-connector">
+    <svg viewBox="0 0 800 40" preserveAspectRatio="xMidYMid meet">
+      <line x1="133" y1="0" x2="133" y2="40"/>
+      <line x1="267" y1="0" x2="133" y2="40"/>
+      <line x1="400" y1="0" x2="400" y2="40"/>
+      <line x1="533" y1="0" x2="400" y2="40"/>
+      <line x1="600" y1="0" x2="667" y2="40"/>
+      <line x1="667" y1="0" x2="667" y2="40"/>
+    </svg>
+  </div>
+
+  <!-- Test Category Panels -->
+  <div class="section-title">3 Test Categories / 31 Assertions</div>
+  <div class="test-panels">
+
+    <!-- Config Verification -->
+    <div class="test-panel config fade-in">
+      <div class="panel-header">
+        <span class="panel-title">Config Verification</span>
+        <span class="panel-count">11 tests</span>
+      </div>
+      <div class="panel-question">"Is it configured correctly?"</div>
+      <div class="check-list">
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">Hostname matches intent</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">Loopback and link IPs assigned</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">OSPF area and network statements</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">BGP neighbors and RR clients</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Operational State -->
+    <div class="test-panel operational fade-in">
+      <div class="panel-header">
+        <span class="panel-title">Operational State</span>
+        <span class="panel-count">10 tests</span>
+      </div>
+      <div class="panel-question">"Is it working correctly?"</div>
+      <div class="check-list">
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">OSPF adjacencies reach Full</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">BGP sessions Established</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">Expected routes in RIB</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">End-to-end ping mesh passes</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health Checks -->
+    <div class="test-panel health fade-in">
+      <div class="panel-header">
+        <span class="panel-title">Health Checks</span>
+        <span class="panel-count">10 tests</span>
+      </div>
+      <div class="panel-question">"Is it operating within parameters?"</div>
+      <div class="check-list">
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">FRR daemons running</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">All interfaces admin up</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">Route count within sane bounds</span>
+        </div>
+        <div class="check-item">
+          <span class="check-icon">&#10003;</span>
+          <span class="check-text">vtysh responsive on all nodes</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Results Bar -->
+  <div class="results-section">
+    <div class="results-bar-container">
+      <div class="results-header">
+        <span class="results-label">Test Results</span>
+        <span class="results-score">31 / 31 PASSED</span>
+      </div>
+      <div class="results-track">
+        <div class="results-fill"></div>
+      </div>
+      <div class="results-breakdown">
+        <div class="breakdown-item">
+          <div class="breakdown-dot" style="background: var(--blue);"></div>
+          Config <span class="breakdown-val" style="color: #93c5fd;">&nbsp;11</span>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-dot" style="background: var(--green);"></div>
+          Operational <span class="breakdown-val" style="color: #86efac;">&nbsp;10</span>
+        </div>
+        <div class="breakdown-item">
+          <div class="breakdown-dot" style="background: var(--orange);"></div>
+          Health <span class="breakdown-val" style="color: #fdba74;">&nbsp;10</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Highlight -->
+  <div class="highlight">
+    <div class="text">"Deployed and working are different assertions."</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">31</div>
+      <div class="stat-label">Tests</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">3</div>
+      <div class="stat-label">Categories</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Devices Verified</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">18s</div>
+      <div class="stat-label">Runtime</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
