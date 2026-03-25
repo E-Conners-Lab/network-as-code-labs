@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 3 - Config Generation from Intent</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --accent3: #ff6b35;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --complete: #00ff88;
+    --coming: #475569;
+    --grid: rgba(0, 212, 255, 0.03);
+    --glow: rgba(0, 212, 255, 0.15);
+    --python: #3b82f6;
+    --ansible: #ef4444;
+    --terraform: #a78bfa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header .lab-tag {
+    display: inline-block;
+    padding: 4px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .header .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 32px;
+  }
+
+  /* Three-column flow */
+  .gen-flow {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    gap: 0;
+    align-items: center;
+    margin-bottom: 56px;
+    position: relative;
+  }
+
+  /* Data model (left) */
+  .data-model {
+    background: var(--surface);
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+    animation: modelPulse 3s ease-in-out infinite;
+  }
+
+  @keyframes modelPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.05); }
+    50% { box-shadow: 0 0 40px rgba(0, 212, 255, 0.2); }
+  }
+
+  .data-model .dm-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .dm-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 0.7rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .dm-field:last-child { border-bottom: none; }
+  .dm-field .key { color: var(--text-dim); }
+  .dm-field .val { color: var(--accent); font-family: 'SF Mono', monospace; font-weight: 600; }
+
+  /* Three paths (center) */
+  .paths-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 0 32px;
+    position: relative;
+  }
+
+  .path-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 60px;
+    gap: 0;
+    align-items: center;
+    width: 100%;
+  }
+
+  .path-arrow-in {
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent));
+    position: relative;
+    animation: arrowFlow 2s ease-in-out infinite;
+  }
+
+  .path-arrow-out {
+    height: 2px;
+    position: relative;
+    animation: arrowFlow 2s ease-in-out infinite;
+  }
+
+  .path-arrow-out::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -4px;
+    border: 5px solid transparent;
+  }
+
+  .path-arrow-out.python-out {
+    background: linear-gradient(90deg, var(--python), transparent);
+  }
+  .path-arrow-out.python-out::after { border-left: 8px solid var(--python); }
+
+  .path-arrow-out.ansible-out {
+    background: linear-gradient(90deg, var(--ansible), transparent);
+  }
+  .path-arrow-out.ansible-out::after { border-left: 8px solid var(--ansible); }
+
+  .path-arrow-out.terraform-out {
+    background: linear-gradient(90deg, var(--terraform), transparent);
+  }
+  .path-arrow-out.terraform-out::after { border-left: 8px solid var(--terraform); }
+
+  @keyframes arrowFlow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .path-card {
+    padding: 16px 20px;
+    border-radius: 10px;
+    text-align: center;
+    transition: all 0.3s;
+  }
+
+  .path-card:hover {
+    transform: scale(1.05);
+  }
+
+  .path-card.python {
+    background: linear-gradient(135deg, #1a2a5a, #0d1a40);
+    border: 1.5px solid var(--python);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+  }
+
+  .path-card.ansible {
+    background: linear-gradient(135deg, #3a1a1a, #2a0d0d);
+    border: 1.5px solid var(--ansible);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.15);
+  }
+
+  .path-card.terraform {
+    background: linear-gradient(135deg, #2a1a3a, #1a0d2a);
+    border: 1.5px solid var(--terraform);
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.15);
+  }
+
+  .path-card .path-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .path-card.python .path-name { color: #93bbfd; }
+  .path-card.ansible .path-name { color: #fca5a5; }
+  .path-card.terraform .path-name { color: #c4b5fd; }
+
+  .path-card .path-desc {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+  }
+
+  .path-card .path-detail {
+    font-size: 0.65rem;
+    margin-top: 6px;
+    font-family: 'SF Mono', monospace;
+  }
+
+  .path-card.python .path-detail { color: rgba(59, 130, 246, 0.6); }
+  .path-card.ansible .path-detail { color: rgba(239, 68, 68, 0.6); }
+  .path-card.terraform .path-detail { color: rgba(167, 139, 250, 0.6); }
+
+  /* Convergence indicator */
+  .converge-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent2);
+    background: rgba(0, 255, 136, 0.08);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-top: 8px;
+  }
+
+  /* Device configs (right) */
+  .config-output {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .config-file {
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    transition: all 0.3s;
+    animation: configSlide 0.5s ease-out forwards;
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  .config-file:nth-child(1) { animation-delay: 0.2s; }
+  .config-file:nth-child(2) { animation-delay: 0.3s; }
+  .config-file:nth-child(3) { animation-delay: 0.4s; }
+  .config-file:nth-child(4) { animation-delay: 0.5s; }
+  .config-file:nth-child(5) { animation-delay: 0.6s; }
+  .config-file:nth-child(6) { animation-delay: 0.7s; }
+
+  @keyframes configSlide {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .config-file:hover {
+    border-color: var(--accent2);
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
+  }
+
+  .config-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .config-dot.spine { background: #2563eb; box-shadow: 0 0 6px rgba(37, 99, 235, 0.5); }
+  .config-dot.leaf { background: #16a34a; box-shadow: 0 0 6px rgba(22, 163, 74, 0.5); }
+  .config-dot.border-dot { background: #ea580c; box-shadow: 0 0 6px rgba(234, 88, 12, 0.5); }
+
+  .config-name {
+    font-family: 'SF Mono', monospace;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* Route Reflector Section */
+  .rr-section {
+    margin-bottom: 48px;
+  }
+
+  .rr-visual {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 0;
+  }
+
+  /* RR tier layout using flexbox instead of absolute positioning */
+  .rr-tier {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+  }
+
+  .rr-node {
+    width: 130px;
+    height: 56px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .rr-node .rr-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .rr-node .rr-label {
+    font-size: 0.55rem;
+    padding: 1px 8px;
+    border-radius: 6px;
+    margin-top: 3px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .rr-node.rr-center-node {
+    width: 150px;
+    height: 64px;
+    background: linear-gradient(135deg, #1a3a6a, #0d2847);
+    border: 2px solid #2563eb;
+    box-shadow: 0 0 40px rgba(37, 99, 235, 0.3);
+    animation: rrGlow 2s ease-in-out infinite;
+  }
+  .rr-node.rr-center-node .rr-name { color: #93bbfd; }
+  .rr-node.rr-center-node .rr-label { background: #2563eb; color: white; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1px; }
+
+  .rr-node.spine-peer {
+    background: linear-gradient(135deg, #1a3a6a, #0d2847);
+    border: 1.5px solid #2563eb;
+  }
+  .rr-node.spine-peer .rr-name { color: #93bbfd; }
+  .rr-node.spine-peer .rr-label { background: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+
+  .rr-node.leaf-peer {
+    background: linear-gradient(135deg, #1a4a3a, #0d3828);
+    border: 1.5px solid #16a34a;
+  }
+  .rr-node.leaf-peer .rr-name { color: #4ade80; }
+  .rr-node.leaf-peer .rr-label { background: rgba(0, 255, 136, 0.15); color: var(--accent2); }
+
+  .rr-node.border-peer {
+    background: linear-gradient(135deg, #4a2a1a, #382010);
+    border: 1.5px solid #ea580c;
+  }
+  .rr-node.border-peer .rr-name { color: #fb923c; }
+  .rr-node.border-peer .rr-label { background: rgba(234, 88, 12, 0.2); color: #fb923c; }
+
+  @keyframes rrGlow {
+    0%, 100% { box-shadow: 0 0 30px rgba(37, 99, 235, 0.2); }
+    50% { box-shadow: 0 0 50px rgba(37, 99, 235, 0.4); }
+  }
+
+  .rr-connections {
+    width: 100%;
+    max-width: 700px;
+    height: 60px;
+  }
+
+  .rr-line {
+    stroke: rgba(0, 212, 255, 0.4);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 4;
+    fill: none;
+    animation: linePulse 3s ease-in-out infinite;
+  }
+
+  .rr-line:nth-child(2) { animation-delay: 0.4s; }
+  .rr-line:nth-child(3) { animation-delay: 0.8s; }
+  .rr-line:nth-child(4) { animation-delay: 1.2s; }
+  .rr-line:nth-child(5) { animation-delay: 1.6s; }
+
+  @keyframes linePulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 0.9; }
+  }
+
+  /* Highlight */
+  .highlight {
+    text-align: center;
+    margin: 40px 0;
+    padding: 24px;
+    border-left: 3px solid var(--accent);
+    border-right: 3px solid var(--accent2);
+    background: linear-gradient(90deg, rgba(0,212,255,0.05), rgba(0,255,136,0.05));
+    border-radius: 8px;
+  }
+
+  .highlight .text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Stats */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin: 48px 0 0 0;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat { text-align: center; }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="lab-tag">Lab 03</div>
+    <h1>Config Generation from Intent</h1>
+    <div class="subtitle">Same Intent, Three Tools, Identical Output</div>
+  </div>
+
+  <!-- Three-path generation flow -->
+  <div class="section-title">Intent-to-Config Translation</div>
+  <div class="gen-flow">
+
+    <!-- Data Model (left) -->
+    <div class="data-model">
+      <div class="dm-title">Data Model</div>
+      <div class="dm-field"><span class="key">fabric</span><span class="val">dc-fabric</span></div>
+      <div class="dm-field"><span class="key">asn</span><span class="val">65000</span></div>
+      <div class="dm-field"><span class="key">devices</span><span class="val">6</span></div>
+      <div class="dm-field"><span class="key">ospf</span><span class="val">area 0</span></div>
+      <div class="dm-field"><span class="key">vrfs</span><span class="val">2</span></div>
+      <div class="dm-field"><span class="key">rr_nodes</span><span class="val">2</span></div>
+    </div>
+
+    <!-- Three Paths (center) -->
+    <div class="paths-center">
+
+      <div class="path-row">
+        <div class="path-arrow-in"></div>
+        <div class="path-card python">
+          <div class="path-name">Python + Jinja2</div>
+          <div class="path-desc">Direct template rendering</div>
+          <div class="path-detail">5 .j2 templates</div>
+        </div>
+        <div class="path-arrow-out python-out"></div>
+      </div>
+
+      <div class="path-row">
+        <div class="path-arrow-in"></div>
+        <div class="path-card ansible">
+          <div class="path-name">Ansible</div>
+          <div class="path-desc">Playbook-driven generation</div>
+          <div class="path-detail">template module</div>
+        </div>
+        <div class="path-arrow-out ansible-out"></div>
+      </div>
+
+      <div class="path-row">
+        <div class="path-arrow-in"></div>
+        <div class="path-card terraform">
+          <div class="path-name">Terraform</div>
+          <div class="path-desc">Provider-based generation</div>
+          <div class="path-detail">local_file resource</div>
+        </div>
+        <div class="path-arrow-out terraform-out"></div>
+      </div>
+
+      <div class="converge-label">Identical Output</div>
+    </div>
+
+    <!-- Device Configs (right) -->
+    <div class="config-output">
+      <div class="config-file">
+        <div class="config-dot spine"></div>
+        <span class="config-name">spine1.conf</span>
+      </div>
+      <div class="config-file">
+        <div class="config-dot spine"></div>
+        <span class="config-name">spine2.conf</span>
+      </div>
+      <div class="config-file">
+        <div class="config-dot leaf"></div>
+        <span class="config-name">leaf1.conf</span>
+      </div>
+      <div class="config-file">
+        <div class="config-dot leaf"></div>
+        <span class="config-name">leaf2.conf</span>
+      </div>
+      <div class="config-file">
+        <div class="config-dot border-dot"></div>
+        <span class="config-name">border1.conf</span>
+      </div>
+      <div class="config-file">
+        <div class="config-dot border-dot"></div>
+        <span class="config-name">border2.conf</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Route Reflector Visual -->
+  <div class="rr-section">
+    <div class="section-title">Route Reflector Auto-Peering: spine1 as RR</div>
+    <div class="rr-visual">
+
+      <!-- Top: spine2 (RR peer) -->
+      <div class="rr-tier">
+        <div class="rr-node spine-peer">
+          <span class="rr-name">spine2</span>
+          <span class="rr-label">iBGP peer</span>
+        </div>
+      </div>
+
+      <!-- Connection lines: spine2 down to spine1 -->
+      <svg class="rr-connections" viewBox="0 0 700 60" preserveAspectRatio="xMidYMid meet">
+        <line class="rr-line" x1="350" y1="0" x2="350" y2="60"/>
+      </svg>
+
+      <!-- Center: spine1 (Route Reflector) -->
+      <div class="rr-tier">
+        <div class="rr-node rr-center-node">
+          <span class="rr-name">spine1</span>
+          <span class="rr-label">Route Reflector</span>
+        </div>
+      </div>
+
+      <!-- Connection lines: spine1 down to 4 clients -->
+      <svg class="rr-connections" viewBox="0 0 700 60" preserveAspectRatio="xMidYMid meet">
+        <line class="rr-line" x1="350" y1="0" x2="115" y2="60"/>
+        <line class="rr-line" x1="350" y1="0" x2="275" y2="60"/>
+        <line class="rr-line" x1="350" y1="0" x2="425" y2="60"/>
+        <line class="rr-line" x1="350" y1="0" x2="585" y2="60"/>
+      </svg>
+
+      <!-- Bottom: 4 RR clients -->
+      <div class="rr-tier">
+        <div class="rr-node leaf-peer">
+          <span class="rr-name">leaf1</span>
+          <span class="rr-label">RR client</span>
+        </div>
+        <div class="rr-node leaf-peer">
+          <span class="rr-name">leaf2</span>
+          <span class="rr-label">RR client</span>
+        </div>
+        <div class="rr-node border-peer">
+          <span class="rr-name">border1</span>
+          <span class="rr-label">RR client</span>
+        </div>
+        <div class="rr-node border-peer">
+          <span class="rr-name">border2</span>
+          <span class="rr-label">RR client</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Highlight -->
+  <div class="highlight">
+    <div class="text">"Same intent, three tools, identical output."</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">3</div>
+      <div class="stat-label">Tooling Paths</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Configs Generated</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">5</div>
+      <div class="stat-label">Jinja2 Templates</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

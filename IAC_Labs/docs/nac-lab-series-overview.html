@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Network as Code Lab Series</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --accent3: #ff6b35;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --complete: #00ff88;
+    --coming: #475569;
+    --grid: rgba(0, 212, 255, 0.03);
+    --glow: rgba(0, 212, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .header .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .header .channel {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 4px 16px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+
+  /* Topology Section */
+  .topology-section {
+    margin-bottom: 56px;
+  }
+
+  .topology-title {
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+
+  .topology {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  .topo-tier {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .topo-node {
+    width: 120px;
+    height: 56px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .topo-node:hover {
+    transform: scale(1.08);
+    z-index: 10;
+  }
+
+  .topo-node.spine {
+    background: linear-gradient(135deg, #1a3a6a, #0d2847);
+    border: 1.5px solid #2563eb;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+  }
+
+  .topo-node.leaf {
+    background: linear-gradient(135deg, #1a4a3a, #0d3828);
+    border: 1.5px solid #16a34a;
+    box-shadow: 0 0 20px rgba(22, 163, 74, 0.2);
+  }
+
+  .topo-node.border {
+    background: linear-gradient(135deg, #4a2a1a, #382010);
+    border: 1.5px solid #ea580c;
+    box-shadow: 0 0 20px rgba(234, 88, 12, 0.2);
+  }
+
+  .topo-node .node-name { font-size: 0.8rem; }
+  .topo-node .node-ip { font-size: 0.65rem; color: var(--text-dim); margin-top: 2px; }
+  .topo-node .node-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  .topo-node.spine .node-badge { background: #2563eb; color: white; }
+
+  /* Connection lines via SVG */
+  .topo-svg {
+    width: 100%;
+    height: 80px;
+    position: relative;
+    z-index: 1;
+    margin: -4px 0;
+  }
+
+  .topo-line {
+    stroke: var(--border);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    fill: none;
+    opacity: 0.6;
+  }
+
+  .topo-legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+
+  /* Lab Pipeline */
+  .pipeline-title {
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 32px;
+  }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    position: relative;
+  }
+
+  /* Lab Cards */
+  .lab-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    transition: all 0.3s ease;
+    overflow: hidden;
+  }
+
+  .lab-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 12px 12px 0 0;
+  }
+
+  .lab-card.complete::before {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .lab-card.coming::before {
+    background: var(--coming);
+  }
+
+  .lab-card.complete:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px var(--glow), 0 8px 32px rgba(0,0,0,0.3);
+    transform: translateY(-4px);
+  }
+
+  .lab-card.coming {
+    opacity: 0.5;
+  }
+
+  .lab-card.coming:hover {
+    opacity: 0.7;
+  }
+
+  .lab-number {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .lab-card.complete .lab-number { color: var(--accent); }
+  .lab-card.coming .lab-number { color: var(--coming); }
+
+  .lab-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+
+  .lab-description {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .lab-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .tool-tag {
+    font-size: 0.68rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .lab-card.complete .tool-tag {
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+  }
+
+  .lab-card.coming .tool-tag {
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--coming);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+  }
+
+  .lab-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .lab-card.complete .status-dot {
+    background: var(--complete);
+    box-shadow: 0 0 8px var(--complete);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .lab-card.coming .status-dot {
+    background: var(--coming);
+  }
+
+  .lab-card.complete .lab-status { color: var(--complete); }
+  .lab-card.coming .lab-status { color: var(--coming); }
+
+  /* Connector arrows between cards */
+  .connector {
+    display: none;
+  }
+
+  /* Stats bar */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin: 48px 0 0 0;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Progress bar */
+  .progress-section {
+    margin: 48px 0 40px 0;
+    text-align: center;
+  }
+
+  .progress-bar-bg {
+    width: 100%;
+    max-width: 600px;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    margin: 12px auto 8px auto;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    width: 57%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+
+  .progress-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* View Toggle */
+  .view-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .view-btn {
+    padding: 6px 20px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .view-btn.active {
+    background: var(--surface2);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .view-btn:hover {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  /* Timeline view */
+  .timeline {
+    display: none;
+    position: relative;
+    padding-left: 40px;
+  }
+
+  .timeline.active { display: block; }
+  .pipeline.active { display: grid; }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2) 57%, var(--coming) 57%);
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 24px;
+    padding-left: 32px;
+  }
+
+  .timeline-dot {
+    position: absolute;
+    left: -32px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid;
+  }
+
+  .timeline-item.complete .timeline-dot {
+    background: var(--complete);
+    border-color: var(--complete);
+    box-shadow: 0 0 8px var(--complete);
+  }
+
+  .timeline-item.coming .timeline-dot {
+    background: var(--surface);
+    border-color: var(--coming);
+  }
+
+  .timeline-item .lab-title { font-size: 1rem; margin-bottom: 4px; }
+  .timeline-item .lab-description { font-size: 0.8rem; margin-bottom: 8px; }
+  .timeline-item .lab-tools { margin-bottom: 0; }
+
+  @media (max-width: 768px) {
+    .header h1 { font-size: 1.8rem; }
+    .pipeline { grid-template-columns: 1fr; }
+    .topo-tier { gap: 12px; }
+    .topo-node { width: 90px; height: 48px; }
+    .stats { gap: 24px; }
+    .stat-value { font-size: 1.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Network as Code</h1>
+    <div class="subtitle">From YAML Intent to Automated Deployment</div>
+    <div class="channel">The Tech-E Lab Series</div>
+  </div>
+
+  <!-- Topology -->
+  <div class="topology-section">
+    <div class="topology-title">Lab Environment: 6-Node Spine-Leaf Fabric</div>
+    <div class="topology">
+
+      <!-- Spine Tier -->
+      <div class="topo-tier">
+        <div class="topo-node spine">
+          <span class="node-badge">RR</span>
+          <span class="node-name">spine1</span>
+          <span class="node-ip">10.0.0.1</span>
+        </div>
+        <div class="topo-node spine">
+          <span class="node-badge">RR</span>
+          <span class="node-name">spine2</span>
+          <span class="node-ip">10.0.0.2</span>
+        </div>
+      </div>
+
+      <!-- SVG lines -->
+      <svg class="topo-svg" viewBox="0 0 600 80" preserveAspectRatio="xMidYMid meet">
+        <!-- spine1 to leafs/borders -->
+        <line class="topo-line" x1="230" y1="0" x2="170" y2="80"/>
+        <line class="topo-line" x1="230" y1="0" x2="260" y2="80"/>
+        <line class="topo-line" x1="230" y1="0" x2="340" y2="80"/>
+        <line class="topo-line" x1="230" y1="0" x2="430" y2="80"/>
+        <!-- spine2 to leafs/borders -->
+        <line class="topo-line" x1="370" y1="0" x2="170" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="260" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="340" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="430" y2="80"/>
+      </svg>
+
+      <!-- Leaf + Border Tier -->
+      <div class="topo-tier">
+        <div class="topo-node leaf">
+          <span class="node-name">leaf1</span>
+          <span class="node-ip">10.0.0.11</span>
+        </div>
+        <div class="topo-node leaf">
+          <span class="node-name">leaf2</span>
+          <span class="node-ip">10.0.0.12</span>
+        </div>
+        <div class="topo-node border">
+          <span class="node-name">border1</span>
+          <span class="node-ip">10.0.0.21</span>
+        </div>
+        <div class="topo-node border">
+          <span class="node-name">border2</span>
+          <span class="node-ip">10.0.0.22</span>
+        </div>
+      </div>
+
+      <div class="topo-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #2563eb;"></div>
+          Spine / Route Reflector
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #16a34a;"></div>
+          Leaf
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #ea580c;"></div>
+          Border Leaf
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="border: 1.5px dashed var(--border); background: transparent;"></div>
+          OSPF + iBGP EVPN
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-section">
+    <div class="progress-label">Series Progress: 4 of 7 Labs Complete</div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill"></div>
+    </div>
+  </div>
+
+  <!-- View Toggle -->
+  <div class="view-toggle">
+    <button class="view-btn active" onclick="setView('grid')">Grid View</button>
+    <button class="view-btn" onclick="setView('timeline')">Timeline View</button>
+  </div>
+
+  <!-- Lab Cards - Grid -->
+  <div class="pipeline active" id="gridView">
+
+    <div class="lab-card complete">
+      <div class="lab-number">Lab 01</div>
+      <div class="lab-title">Defining Network Intent</div>
+      <div class="lab-description">YAML data model describing the entire fabric: topology, underlay, overlay, VRFs, and services. Pydantic schemas validate every field.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">Python</span>
+        <span class="tool-tag">Pydantic v2</span>
+        <span class="tool-tag">YAML</span>
+        <span class="tool-tag">Git</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
+    </div>
+
+    <div class="lab-card complete">
+      <div class="lab-number">Lab 02</div>
+      <div class="lab-title">Pre-Change Validation</div>
+      <div class="lab-description">Four-layer validation framework with 39 checks: format, syntax, semantic, and compliance. Every rule has a stable ID for CI gating.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">pytest</span>
+        <span class="tool-tag">Pydantic</span>
+        <span class="tool-tag">27 Tests</span>
+        <span class="tool-tag">HTML Reports</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
+    </div>
+
+    <div class="lab-card complete">
+      <div class="lab-number">Lab 03</div>
+      <div class="lab-title">Config Generation</div>
+      <div class="lab-description">Intent-to-device translation with three tooling paths. Route reflector auto-peering: change one flag, rewire the entire overlay.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">Jinja2</span>
+        <span class="tool-tag">Ansible</span>
+        <span class="tool-tag">Terraform</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
+    </div>
+
+    <div class="lab-card complete">
+      <div class="lab-number">Lab 04</div>
+      <div class="lab-title">CI/CD Pipeline</div>
+      <div class="lab-description">GitHub Actions workflows: validate on push, plan with config diff on PR, deploy on merge. Async deployment to all 6 devices concurrently.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">GitHub Actions</span>
+        <span class="tool-tag">Scrapli</span>
+        <span class="tool-tag">asyncio</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
+    </div>
+
+    <div class="lab-card coming">
+      <div class="lab-number">Lab 05</div>
+      <div class="lab-title">Post-Change Testing</div>
+      <div class="lab-description">Automated testing after every deployment: config verification, operational state checks, and health monitoring across the fabric.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">pytest</span>
+        <span class="tool-tag">Robot Framework</span>
+        <span class="tool-tag">Scrapli</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Coming Soon</div>
+    </div>
+
+    <div class="lab-card coming">
+      <div class="lab-number">Lab 06</div>
+      <div class="lab-title">Drift Detection</div>
+      <div class="lab-description">Scheduled checks comparing live state against Git intent. Three reconciliation strategies: auto-remediate, PR review, or absorb.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">Scheduled CI</span>
+        <span class="tool-tag">Config Diff</span>
+        <span class="tool-tag">Reconciliation</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Coming Soon</div>
+    </div>
+
+    <div class="lab-card coming">
+      <div class="lab-number">Lab 07</div>
+      <div class="lab-title">AI Agent Integration</div>
+      <div class="lab-description">Engineer Brain connected to the NaC pipeline. AI-assisted validation diagnosis, natural language config generation, and failure analysis.</div>
+      <div class="lab-tools">
+        <span class="tool-tag">Claude API</span>
+        <span class="tool-tag">Engineer Brain</span>
+        <span class="tool-tag">MCP Tools</span>
+      </div>
+      <div class="lab-status"><div class="status-dot"></div> Coming Soon</div>
+    </div>
+
+  </div>
+
+  <!-- Lab Cards - Timeline -->
+  <div class="timeline" id="timelineView">
+
+    <div class="timeline-item complete">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--accent);">Lab 01</div>
+      <div class="lab-title">Defining Network Intent</div>
+      <div class="lab-description">YAML data model + Pydantic schemas + Git repository</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Python</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Pydantic v2</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">YAML</span>
+      </div>
+    </div>
+
+    <div class="timeline-item complete">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--accent);">Lab 02</div>
+      <div class="lab-title">Pre-Change Validation</div>
+      <div class="lab-description">39 checks across 4 layers + pytest suite with 27 tests</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">pytest</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">4-Layer Framework</span>
+      </div>
+    </div>
+
+    <div class="timeline-item complete">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--accent);">Lab 03</div>
+      <div class="lab-title">Config Generation</div>
+      <div class="lab-description">Three tooling paths producing equivalent FRR configs</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Jinja2</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Ansible</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Terraform</span>
+      </div>
+    </div>
+
+    <div class="timeline-item complete">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--accent);">Lab 04</div>
+      <div class="lab-title">CI/CD Pipeline</div>
+      <div class="lab-description">GitHub Actions + async deployment to 6 devices</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">GitHub Actions</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Scrapli</span>
+      </div>
+    </div>
+
+    <div class="timeline-item coming">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--coming);">Lab 05</div>
+      <div class="lab-title" style="opacity:0.5;">Post-Change Testing</div>
+      <div class="lab-description" style="opacity:0.5;">Config verification + operational state + health checks</div>
+    </div>
+
+    <div class="timeline-item coming">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--coming);">Lab 06</div>
+      <div class="lab-title" style="opacity:0.5;">Drift Detection</div>
+      <div class="lab-description" style="opacity:0.5;">Scheduled state comparison + reconciliation workflows</div>
+    </div>
+
+    <div class="timeline-item coming">
+      <div class="timeline-dot"></div>
+      <div class="lab-number" style="color: var(--coming);">Lab 07</div>
+      <div class="lab-title" style="opacity:0.5;">AI Agent Integration</div>
+      <div class="lab-description" style="opacity:0.5;">Engineer Brain + Claude API + MCP tools</div>
+    </div>
+
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">FRR Devices</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">39</div>
+      <div class="stat-label">Validation Checks</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">3</div>
+      <div class="stat-label">Tooling Paths</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Utility Scripts</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Manual SSH</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function setView(view) {
+  const grid = document.getElementById('gridView');
+  const timeline = document.getElementById('timelineView');
+  const buttons = document.querySelectorAll('.view-btn');
+
+  if (view === 'grid') {
+    grid.style.display = 'grid';
+    grid.classList.add('active');
+    timeline.style.display = 'none';
+    timeline.classList.remove('active');
+  } else {
+    grid.style.display = 'none';
+    grid.classList.remove('active');
+    timeline.style.display = 'block';
+    timeline.classList.add('active');
+  }
+
+  buttons.forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase().includes(view));
+  });
+}
+</script>
+
+</body>
+</html>

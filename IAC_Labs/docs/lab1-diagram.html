@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 1 - Defining Network Intent</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --accent3: #ff6b35;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --complete: #00ff88;
+    --coming: #475569;
+    --grid: rgba(0, 212, 255, 0.03);
+    --glow: rgba(0, 212, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header .lab-tag {
+    display: inline-block;
+    padding: 4px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .header .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  /* Data Flow Section */
+  .flow-section {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0;
+    align-items: center;
+    margin-bottom: 56px;
+  }
+
+  .flow-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .flow-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .yaml-file {
+    width: 200px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+  }
+
+  .yaml-file:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--glow);
+    transform: translateX(4px);
+  }
+
+  .yaml-icon {
+    color: #f59e0b;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: rgba(245, 158, 11, 0.15);
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  .yaml-name { color: var(--text); }
+
+  /* Animated arrows */
+  .flow-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 20px;
+  }
+
+  .arrow-line {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    position: relative;
+    animation: arrowPulse 2s ease-in-out infinite;
+  }
+
+  .arrow-line::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: -4px;
+    border: 5px solid transparent;
+    border-left: 8px solid var(--accent2);
+  }
+
+  .arrow-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  @keyframes arrowPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* Pydantic validation block */
+  .validation-block {
+    width: 220px;
+    padding: 24px;
+    background: linear-gradient(135deg, #1a2a4a, #0d1a35);
+    border: 1.5px solid #6366f1;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+    animation: validGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes validGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.1); }
+    50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.25); }
+  }
+
+  .validation-block .icon {
+    font-size: 1.8rem;
+    margin-bottom: 8px;
+  }
+
+  .validation-block .title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #a5b4fc;
+    margin-bottom: 4px;
+  }
+
+  .validation-block .desc {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  /* Data model output */
+  .model-output {
+    width: 220px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1.5px solid var(--accent2);
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.1);
+    animation: modelGlow 3s ease-in-out infinite;
+  }
+
+  @keyframes modelGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.05); }
+    50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.2); }
+  }
+
+  .model-output .title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent2);
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .model-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.72rem;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .model-field:last-child { border-bottom: none; }
+  .model-field .key { color: var(--text-dim); }
+  .model-field .val { color: var(--accent2); font-weight: 600; font-family: 'SF Mono', monospace; }
+
+  /* Topology Section */
+  .topo-section {
+    margin-bottom: 48px;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+  }
+
+  .topology {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topo-tier {
+    display: flex;
+    gap: 32px;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .topo-node {
+    width: 120px;
+    height: 56px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .topo-node:hover { transform: scale(1.08); z-index: 10; }
+
+  .topo-node.spine {
+    background: linear-gradient(135deg, #1a3a6a, #0d2847);
+    border: 1.5px solid #2563eb;
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.2);
+  }
+
+  .topo-node.leaf {
+    background: linear-gradient(135deg, #1a4a3a, #0d3828);
+    border: 1.5px solid #16a34a;
+    box-shadow: 0 0 20px rgba(22, 163, 74, 0.2);
+  }
+
+  .topo-node.border {
+    background: linear-gradient(135deg, #4a2a1a, #382010);
+    border: 1.5px solid #ea580c;
+    box-shadow: 0 0 20px rgba(234, 88, 12, 0.2);
+  }
+
+  .topo-node .node-name { font-size: 0.8rem; }
+  .topo-node .node-ip { font-size: 0.65rem; color: var(--text-dim); margin-top: 2px; }
+  .topo-node .node-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: #2563eb;
+    color: white;
+  }
+
+  .topo-svg {
+    width: 100%;
+    height: 80px;
+    position: relative;
+    z-index: 1;
+    margin: -4px 0;
+  }
+
+  .topo-line {
+    stroke: var(--border);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    fill: none;
+    opacity: 0.6;
+  }
+
+  .topo-legend {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+
+  /* Git init block */
+  .git-block {
+    margin: 40px auto;
+    max-width: 400px;
+    padding: 20px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  .git-block .cmd {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    color: var(--accent2);
+    margin-bottom: 8px;
+  }
+
+  .git-block .cmd .prompt { color: var(--text-dim); }
+
+  .git-block .note {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  /* Stats */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin: 48px 0 0 0;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat { text-align: center; }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Highlight quote */
+  .highlight {
+    text-align: center;
+    margin: 40px 0;
+    padding: 24px;
+    border-left: 3px solid var(--accent);
+    border-right: 3px solid var(--accent2);
+    background: linear-gradient(90deg, rgba(0,212,255,0.05), rgba(0,255,136,0.05));
+    border-radius: 8px;
+  }
+
+  .highlight .text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.5px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Fade-in animation */
+  .fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+    opacity: 0;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  .fade-in:nth-child(1) { animation-delay: 0.1s; }
+  .fade-in:nth-child(2) { animation-delay: 0.2s; }
+  .fade-in:nth-child(3) { animation-delay: 0.3s; }
+  .fade-in:nth-child(4) { animation-delay: 0.4s; }
+  .fade-in:nth-child(5) { animation-delay: 0.5s; }
+  .fade-in:nth-child(6) { animation-delay: 0.6s; }
+  .fade-in:nth-child(7) { animation-delay: 0.7s; }
+  .fade-in:nth-child(8) { animation-delay: 0.8s; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="lab-tag">Lab 01</div>
+    <h1>Defining Network Intent</h1>
+    <div class="subtitle">Network as Structured Data</div>
+  </div>
+
+  <!-- Data Flow -->
+  <div class="section-title">Data Flow: YAML Intent to Validated Model</div>
+  <div class="flow-section">
+
+    <!-- YAML Files -->
+    <div class="flow-column">
+      <div class="flow-label">Intent Files</div>
+      <div class="yaml-file fade-in">
+        <span class="yaml-icon">YML</span>
+        <span class="yaml-name">fabric.yaml</span>
+      </div>
+      <div class="yaml-file fade-in">
+        <span class="yaml-icon">YML</span>
+        <span class="yaml-name">topology.yaml</span>
+      </div>
+      <div class="yaml-file fade-in">
+        <span class="yaml-icon">YML</span>
+        <span class="yaml-name">underlay.yaml</span>
+      </div>
+      <div class="yaml-file fade-in">
+        <span class="yaml-icon">YML</span>
+        <span class="yaml-name">overlay.yaml</span>
+      </div>
+      <div class="yaml-file fade-in">
+        <span class="yaml-icon">YML</span>
+        <span class="yaml-name">services/*.yaml</span>
+      </div>
+      <div class="yaml-file fade-in">
+        <span class="yaml-icon">YML</span>
+        <span class="yaml-name">defaults.yaml</span>
+      </div>
+    </div>
+
+    <!-- Arrow 1 -->
+    <div class="flow-arrow">
+      <div class="arrow-line"></div>
+      <div class="arrow-label">Parse</div>
+    </div>
+
+    <!-- Pydantic Validation -->
+    <div class="flow-column">
+      <div class="flow-label">Schema Validation</div>
+      <div class="validation-block">
+        <div class="icon">&#x1F6E1;</div>
+        <div class="title">Pydantic v2</div>
+        <div class="desc">Type checking, field constraints, cross-field validators, custom rules</div>
+      </div>
+    </div>
+
+    <!-- Arrow 2 -->
+    <div class="flow-arrow">
+      <div class="arrow-line"></div>
+      <div class="arrow-label">Validate</div>
+    </div>
+
+    <!-- Validated Model -->
+    <div class="flow-column">
+      <div class="flow-label">Validated Model</div>
+      <div class="model-output">
+        <div class="title">FabricModel</div>
+        <div class="model-field">
+          <span class="key">devices</span>
+          <span class="val">6</span>
+        </div>
+        <div class="model-field">
+          <span class="key">links</span>
+          <span class="val">8</span>
+        </div>
+        <div class="model-field">
+          <span class="key">vrfs</span>
+          <span class="val">2</span>
+        </div>
+        <div class="model-field">
+          <span class="key">bgp_peers</span>
+          <span class="val">10</span>
+        </div>
+        <div class="model-field">
+          <span class="key">ospf_areas</span>
+          <span class="val">1</span>
+        </div>
+        <div class="model-field">
+          <span class="key">valid</span>
+          <span class="val">true</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Topology -->
+  <div class="topo-section">
+    <div class="section-title">6-Node Spine-Leaf Fabric</div>
+    <div class="topology">
+      <div class="topo-tier">
+        <div class="topo-node spine">
+          <span class="node-badge">RR</span>
+          <span class="node-name">spine1</span>
+          <span class="node-ip">10.0.0.1</span>
+        </div>
+        <div class="topo-node spine">
+          <span class="node-badge">RR</span>
+          <span class="node-name">spine2</span>
+          <span class="node-ip">10.0.0.2</span>
+        </div>
+      </div>
+
+      <svg class="topo-svg" viewBox="0 0 600 80" preserveAspectRatio="xMidYMid meet">
+        <line class="topo-line" x1="230" y1="0" x2="170" y2="80"/>
+        <line class="topo-line" x1="230" y1="0" x2="260" y2="80"/>
+        <line class="topo-line" x1="230" y1="0" x2="340" y2="80"/>
+        <line class="topo-line" x1="230" y1="0" x2="430" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="170" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="260" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="340" y2="80"/>
+        <line class="topo-line" x1="370" y1="0" x2="430" y2="80"/>
+      </svg>
+
+      <div class="topo-tier">
+        <div class="topo-node leaf">
+          <span class="node-name">leaf1</span>
+          <span class="node-ip">10.0.0.11</span>
+        </div>
+        <div class="topo-node leaf">
+          <span class="node-name">leaf2</span>
+          <span class="node-ip">10.0.0.12</span>
+        </div>
+        <div class="topo-node border">
+          <span class="node-name">border1</span>
+          <span class="node-ip">10.0.0.21</span>
+        </div>
+        <div class="topo-node border">
+          <span class="node-name">border2</span>
+          <span class="node-ip">10.0.0.22</span>
+        </div>
+      </div>
+
+      <div class="topo-legend">
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #2563eb;"></div>
+          Spine / Route Reflector
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #16a34a;"></div>
+          Leaf
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background: #ea580c;"></div>
+          Border Leaf
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Git Init -->
+  <div class="git-block">
+    <div class="cmd"><span class="prompt">$</span> git init && git add . && git commit -m "initial intent"</div>
+    <div class="note">Version-controlled from the first YAML file</div>
+  </div>
+
+  <!-- Highlight -->
+  <div class="highlight">
+    <div class="text">"Network as structured data."</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">8</div>
+      <div class="stat-label">YAML Files</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Devices</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">1</div>
+      <div class="stat-label">Git Commit</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

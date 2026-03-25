@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lab 2 - Pre-Change Validation</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface2: #1a2332;
+    --border: #1e3a5f;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --accent3: #ff6b35;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --complete: #00ff88;
+    --coming: #475569;
+    --grid: rgba(0, 212, 255, 0.03);
+    --glow: rgba(0, 212, 255, 0.15);
+    --red: #ef4444;
+    --yellow: #f59e0b;
+    --purple: #a78bfa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .header .lab-tag {
+    display: inline-block;
+    padding: 4px 16px;
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .header h1 {
+    font-size: 2.8rem;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  .header .subtitle {
+    font-size: 1.1rem;
+    color: var(--text-dim);
+    font-weight: 400;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 32px;
+  }
+
+  /* Main layout: pipeline left, gate visual right */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 48px;
+    align-items: start;
+    margin-bottom: 48px;
+  }
+
+  /* Validation Pipeline */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  .pipeline::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    opacity: 0.15;
+    z-index: 0;
+  }
+
+  .layer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 28px;
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 20px;
+    align-items: center;
+    transition: all 0.3s;
+    animation: layerSlide 0.6s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .layer-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 30px var(--glow);
+    transform: translateY(-2px);
+  }
+
+  .layer-card:nth-child(1) { animation-delay: 0.1s; }
+  .layer-card:nth-child(2) { animation-delay: 0.3s; }
+  .layer-card:nth-child(3) { animation-delay: 0.5s; }
+  .layer-card:nth-child(4) { animation-delay: 0.7s; }
+
+  @keyframes layerSlide {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Connector between layers */
+  .layer-connector {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .connector-arrow {
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
+    position: relative;
+    animation: connectorPulse 2s ease-in-out infinite;
+  }
+
+  .connector-arrow::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: -4px;
+    border: 5px solid transparent;
+    border-top: 6px solid var(--accent2);
+  }
+
+  @keyframes connectorPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  .layer-id {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+
+  .layer-card:nth-child(1) .layer-id {
+    background: linear-gradient(135deg, #1a2a4a, #0d1a35);
+    border: 1.5px solid #6366f1;
+    color: #a5b4fc;
+  }
+  .layer-card:nth-child(1) { border-left: 3px solid #6366f1; }
+
+  .layer-card:nth-child(3) .layer-id {
+    background: linear-gradient(135deg, #1a3a2a, #0d2818);
+    border: 1.5px solid #16a34a;
+    color: #4ade80;
+  }
+  .layer-card:nth-child(3) { border-left: 3px solid #16a34a; }
+
+  .layer-card:nth-child(5) .layer-id {
+    background: linear-gradient(135deg, #2a2a1a, #1a1a0d);
+    border: 1.5px solid #f59e0b;
+    color: #fbbf24;
+  }
+  .layer-card:nth-child(5) { border-left: 3px solid #f59e0b; }
+
+  .layer-card:nth-child(7) .layer-id {
+    background: linear-gradient(135deg, #2a1a1a, #1a0d0d);
+    border: 1.5px solid #ef4444;
+    color: #f87171;
+  }
+  .layer-card:nth-child(7) { border-left: 3px solid #ef4444; }
+
+  .layer-info .layer-name {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .layer-info .layer-desc {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  .layer-info .catches {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .catch-tag {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-dim);
+  }
+
+  .layer-count {
+    text-align: center;
+    min-width: 56px;
+  }
+
+  .layer-count .num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .layer-count .label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* Gate visual (right side) */
+  .gate-visual {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .gate-visual::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--red), var(--accent2));
+    border-radius: 12px 12px 0 0;
+  }
+
+  .gate-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .gate-flow {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .gate-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .gate-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .gate-icon.pass {
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    color: var(--accent2);
+  }
+
+  .gate-icon.fail {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--red);
+  }
+
+  .gate-text {
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .gate-text .label { color: var(--text); font-weight: 600; }
+  .gate-text .detail { color: var(--text-dim); font-size: 0.7rem; }
+
+  .gate-result {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .gate-result.blocked {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+
+  .gate-result .result-icon {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+
+  .gate-result .result-text {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--red);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .gate-result .result-detail {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Report output */
+  .report-section {
+    margin-top: 24px;
+    padding: 16px;
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.15);
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .report-section .report-title {
+    font-size: 0.7rem;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .report-formats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .report-badge {
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    border-radius: 10px;
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    font-weight: 600;
+  }
+
+  /* Highlight */
+  .highlight {
+    text-align: center;
+    margin: 40px 0;
+    padding: 24px;
+    border-left: 3px solid var(--accent);
+    border-right: 3px solid var(--accent2);
+    background: linear-gradient(90deg, rgba(0,212,255,0.05), rgba(0,255,136,0.05));
+    border-radius: 8px;
+  }
+
+  .highlight .text {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Stats */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin: 48px 0 0 0;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat { text-align: center; }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="lab-tag">Lab 02</div>
+    <h1>Pre-Change Validation</h1>
+    <div class="subtitle">Catch Errors Before They Reach the Network</div>
+  </div>
+
+  <div class="section-title">4-Layer Validation Pipeline</div>
+
+  <div class="main-layout">
+
+    <!-- Pipeline (left) -->
+    <div class="pipeline">
+
+      <!-- Layer 1: Format -->
+      <div class="layer-card">
+        <div class="layer-id">FMT</div>
+        <div class="layer-info">
+          <div class="layer-name">Format Validation</div>
+          <div class="layer-desc">YAML syntax, file structure, encoding, and schema conformance</div>
+          <div class="catches">
+            <span class="catch-tag">YAML parse errors</span>
+            <span class="catch-tag">Missing required files</span>
+            <span class="catch-tag">Invalid encoding</span>
+          </div>
+        </div>
+        <div class="layer-count">
+          <div class="num">8</div>
+          <div class="label">Rules</div>
+        </div>
+      </div>
+
+      <div class="layer-connector"><div class="connector-arrow"></div></div>
+
+      <!-- Layer 2: Syntax -->
+      <div class="layer-card">
+        <div class="layer-id">SYN</div>
+        <div class="layer-info">
+          <div class="layer-name">Syntax Validation</div>
+          <div class="layer-desc">Field types, value ranges, enum membership, required fields</div>
+          <div class="catches">
+            <span class="catch-tag">Wrong data types</span>
+            <span class="catch-tag">Out-of-range values</span>
+            <span class="catch-tag">Unknown fields</span>
+          </div>
+        </div>
+        <div class="layer-count">
+          <div class="num">12</div>
+          <div class="label">Rules</div>
+        </div>
+      </div>
+
+      <div class="layer-connector"><div class="connector-arrow"></div></div>
+
+      <!-- Layer 3: Semantic -->
+      <div class="layer-card">
+        <div class="layer-id">SEM</div>
+        <div class="layer-info">
+          <div class="layer-name">Semantic Validation</div>
+          <div class="layer-desc">Cross-file references, IP uniqueness, topology consistency</div>
+          <div class="catches">
+            <span class="catch-tag">Duplicate IPs</span>
+            <span class="catch-tag">Broken references</span>
+            <span class="catch-tag">Missing peers</span>
+          </div>
+        </div>
+        <div class="layer-count">
+          <div class="num">11</div>
+          <div class="label">Rules</div>
+        </div>
+      </div>
+
+      <div class="layer-connector"><div class="connector-arrow"></div></div>
+
+      <!-- Layer 4: Compliance -->
+      <div class="layer-card">
+        <div class="layer-id">CMP</div>
+        <div class="layer-info">
+          <div class="layer-name">Compliance Validation</div>
+          <div class="layer-desc">Organizational policies, naming standards, security baselines</div>
+          <div class="catches">
+            <span class="catch-tag">Naming violations</span>
+            <span class="catch-tag">Missing auth</span>
+            <span class="catch-tag">Policy breach</span>
+          </div>
+        </div>
+        <div class="layer-count">
+          <div class="num">8</div>
+          <div class="label">Rules</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Gate Visual (right) -->
+    <div class="gate-visual">
+      <div class="gate-title">Gate Metaphor: Error Stops Here</div>
+
+      <div class="gate-flow">
+        <div class="gate-item">
+          <div class="gate-icon pass">&#x2713;</div>
+          <div class="gate-text">
+            <div class="label">FMT Layer</div>
+            <div class="detail">All 8 format checks passed</div>
+          </div>
+        </div>
+
+        <div class="gate-item">
+          <div class="gate-icon pass">&#x2713;</div>
+          <div class="gate-text">
+            <div class="label">SYN Layer</div>
+            <div class="detail">All 12 syntax checks passed</div>
+          </div>
+        </div>
+
+        <div class="gate-item">
+          <div class="gate-icon fail">&#x2717;</div>
+          <div class="gate-text">
+            <div class="label">SEM Layer</div>
+            <div class="detail">SEM-003: Duplicate loopback IP detected</div>
+          </div>
+        </div>
+
+        <div class="gate-item" style="opacity: 0.3;">
+          <div class="gate-icon" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: var(--text-dim);">&#x2014;</div>
+          <div class="gate-text">
+            <div class="label" style="color: var(--text-dim);">CMP Layer</div>
+            <div class="detail">Skipped (upstream failure)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="gate-result blocked">
+        <div class="result-icon">&#x1F6AB;</div>
+        <div class="result-text">Pipeline Blocked</div>
+        <div class="result-detail">Error caught at SEM layer before reaching the network</div>
+      </div>
+
+      <div class="report-section">
+        <div class="report-title">Report Output</div>
+        <div class="report-formats">
+          <span class="report-badge">HTML Report</span>
+          <span class="report-badge">JUnit XML</span>
+          <span class="report-badge">Console</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Highlight -->
+  <div class="highlight">
+    <div class="text">"Catch errors before they reach the network."</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-value">39</div>
+      <div class="stat-label">Total Checks</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">27</div>
+      <div class="stat-label">pytest Tests</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">4</div>
+      <div class="stat-label">Layers</div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">HTML</div>
+      <div class="stat-label">Reports</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
