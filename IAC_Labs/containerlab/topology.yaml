@@ -6,6 +6,10 @@
 # tiers. The management network is auto-provisioned by ContainerLab
 # on the 172.20.20.0/24 subnet.
 #
+# The custom frr_daemons file enables ospfd and bgpd on startup so the
+# deployment script can load configs without restarting FRR (which would
+# destroy the veth interfaces ContainerLab creates).
+#
 # Deploy with: sudo containerlab deploy --topo containerlab/topology.yaml
 # Destroy with: sudo containerlab destroy --topo containerlab/topology.yaml
 
@@ -19,6 +23,8 @@ topology:
   kinds:
     linux:
       image: quay.io/frrouting/frr:10.3.1
+      binds:
+        - frr_daemons:/etc/frr/daemons
 
   nodes:
     spine1:

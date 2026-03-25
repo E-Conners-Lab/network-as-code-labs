@@ -62,7 +62,7 @@ Now look at a leaf:
 cat configs/leaf1.conf
 ```
 
-Leaf1's BGP section has only two neighbors: spine1 and spine2. No cluster-id, no route-reflector-client. It is a client. Its VRF section has only PRODUCTION because that is the only VRF with networks matching leaf1's assigned VLANs (10 and 20). It gets VXLAN interfaces for prod-web and prod-app but not for prod-db, dev-general, or mgmt-infra.
+Leaf1's BGP section has only two neighbors: spine1 and spine2. No cluster-id, no route-reflector-client. It is a client. Its VRF section contains the BGP EVPN configuration for the PRODUCTION VRF and reference comments documenting the VXLAN segments. The VXLAN dataplane config (vxlan interfaces, bridge mappings, anycast gateways) is platform-specific and would be configured at the OS level on a real switch. In the FRR lab environment we handle the routing plane through vtysh and document the dataplane config as comments.
 
 Now look at a border:
 
@@ -70,7 +70,7 @@ Now look at a border:
 cat configs/border1.conf
 ```
 
-Border1's BGP section is the same as a leaf: two neighbors, both spines. But its VRF section has all three VRFs (PRODUCTION, DEVELOPMENT, MANAGEMENT) and all five network segments. Borders carry everything because they are the exit point for traffic leaving the fabric.
+Border1's BGP section is the same as a leaf: two neighbors, both spines. But its VRF section has all three VRFs (PRODUCTION, DEVELOPMENT, MANAGEMENT) and references all five network segments. Borders carry everything because they are the exit point for traffic leaving the fabric.
 
 Compare leaf2 to leaf1:
 
@@ -78,7 +78,7 @@ Compare leaf2 to leaf1:
 diff configs/leaf1.conf configs/leaf2.conf
 ```
 
-Different loopbacks, different fabric link IPs, different host-facing interfaces. Leaf2 has VLAN 20 and VLAN 30, so it gets prod-app and prod-db instead of prod-web and prod-app. The same intent model, the same templates, completely different device configs.
+Different loopbacks, different fabric link IPs, different host-facing interfaces, different VRF assignments. The same intent model, the same templates, completely different device configs.
 
 ## Part 2: The Jinja2 Templates
 
@@ -98,7 +98,7 @@ This is the entry point. It sets the FRR version, hostname, and logging, then in
 cat generators/python/templates/frr_interfaces.j2
 ```
 
-Three sections: loopback, fabric links, and host-facing interfaces. The loopback is the same for every device. Fabric links come from the underlay data model with OSPF point-to-point config applied inline. Host-facing interfaces only appear on leafs and borders since the render engine filters them out for spines.
+Three sections: loopback, fabric links, and host-facing interfaces. The loopback gets its IP address and is placed into OSPF area 0. Fabric links get their IPs and OSPF point-to-point config applied inline. Note that MTU is not set through vtysh because FRR treats that as an OS-level setting (you would use `ip link set` on Linux). Host-facing interfaces get descriptions through vtysh, but switchport and VLAN configuration is platform-specific and handled outside FRR on real switches. The template documents these as comments.
 
 ### frr_ospf.j2
 
@@ -106,7 +106,7 @@ Three sections: loopback, fabric links, and host-facing interfaces. The loopback
 cat generators/python/templates/frr_ospf.j2
 ```
 
-OSPF configuration with the router-id set to the loopback, reference bandwidth from the data model, and network statements for the loopback and every fabric link. The loopback interface is set as passive since it should not form adjacencies.
+OSPF configuration with the router-id set to the loopback and reference bandwidth from the data model. The network statements tell OSPF which interfaces to activate. FRR may convert these to interface-level `ip ospf area` commands internally, which is why the loopback also has `ip ospf area` set directly in the interfaces template to ensure it is always advertised.
 
 ### frr_bgp.j2
 
@@ -122,7 +122,7 @@ This is where the route reflector magic happens. The template iterates over the 
 cat generators/python/templates/frr_vrf.j2
 ```
 
-VRF definitions with L3 VNIs, EVPN route distinguishers and route targets, and VXLAN network segments with anycast gateways. Each network segment gets a vxlan interface (for the VXLAN tunnel), a vlan interface (for the anycast gateway), and ARP suppression if enabled in defaults.
+VRF BGP EVPN configuration with route distinguishers and route targets per VRF. The VXLAN dataplane configuration (vxlan interfaces, bridge mappings, anycast gateways) is included as reference comments because it is platform-specific. On a real EVPN switch these commands create the tunnels and gateways. In our FRR lab environment, the routing plane is what matters and the dataplane would be configured through Linux bridge and ip commands at the OS level.
 
 ## Part 3: Path B -- Ansible
 

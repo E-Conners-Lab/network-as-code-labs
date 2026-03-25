@@ -44,6 +44,7 @@ htmlcov/
 *.xml
 reports/
 configs/
+backups/
 configs-ansible/
 configs-tf/
 .terraform/

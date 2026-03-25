@@ -1,17 +1,12 @@
-{# VRF and VXLAN/EVPN network segment configuration.
-   Only rendered on leaf and border devices that have VRF assignments.
+{# VRF and EVPN configuration for leaf and border devices.
+   The VRF routing configuration (BGP address-family) is managed
+   through vtysh. The VXLAN dataplane configuration (vxlan interfaces,
+   bridge mappings, anycast gateways) is platform-specific and handled
+   at the OS level on real switches. In this lab we include the
+   dataplane config as comments for documentation purposes.
 #}
 !
-! --- VRF Definitions ---
-!
-{% for vrf in vrfs %}
-vrf {{ vrf.name }}
- vni {{ vrf.vni }}
-exit-vrf
-!
-{% endfor %}
-!
-! --- EVPN VRF Configuration ---
+! --- VRF Routing ---
 !
 router bgp {{ device.asn }}
 {% for vrf in vrfs %}
@@ -30,21 +25,15 @@ router bgp {{ device.asn }}
 {% endfor %}
 !
 {% if networks %}
-! --- Network Segments (VXLAN) ---
+! --- Network Segments (reference) ---
+! The following VXLAN dataplane config is platform-specific.
+! On a real EVPN switch, these commands create the VXLAN tunnels,
+! bridge mappings, and anycast gateways. In ContainerLab with FRR,
+! these would be configured via Linux bridge/ip commands outside vtysh.
 !
 {% for net in networks %}
 ! {{ net.name }}: VLAN {{ net.vlan_id }}, VNI {{ net.vni }}, {{ net.subnet }}
-interface vxlan{{ net.vni }}
- vxlan vni {{ net.vni }}
- bridge access vlan {{ net.vlan_id }}
-!
-interface vlan{{ net.vlan_id }}
- ip address {{ net.gateway }}/{{ net.subnet.prefixlen }}
- vrf {{ net.vrf }}
- description {{ defaults.description_prefix }} {{ net.description }}
-{% if defaults.arp_suppression %}
- arp-suppress on
-{% endif %}
-!
+!   gateway: {{ net.gateway }}/{{ net.subnet.prefixlen }}
+!   vrf: {{ net.vrf }}
 {% endfor %}
 {% endif %}

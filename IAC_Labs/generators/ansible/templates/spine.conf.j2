@@ -12,12 +12,12 @@ service integrated-vtysh-config
 !
 interface lo
  ip address {{ loopback }}
+ ip ospf area {{ ospf.area }}
  description {{ defaults.description_prefix }} loopback
 !
 {% for link in fabric_links %}
 interface {{ link.interface }}
  ip address {{ link.ip }}
- mtu {{ defaults.fabric_link_mtu }}
  description {{ defaults.description_prefix }} to {{ link.peer }} {{ link.peer_intf }}
  ip ospf network point-to-point
  ip ospf area {{ ospf.area }}

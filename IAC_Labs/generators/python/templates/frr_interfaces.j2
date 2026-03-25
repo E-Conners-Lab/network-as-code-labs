@@ -1,9 +1,16 @@
-{# Interface configuration: loopback, fabric links, and host-facing ports. #}
+{# Interface configuration: loopback and fabric links.
+   FRR handles IP addressing and OSPF parameters on interfaces.
+   MTU is set at the OS level (ip link set), not through vtysh.
+   Host-facing interface configuration (switchport, VLANs) is
+   platform-dependent and handled outside FRR on real switches.
+   Here we include them as descriptive comments for documentation.
+#}
 !
 ! --- Loopback ---
 !
 interface lo
  ip address {{ device.loopback }}
+ ip ospf area {{ ospf.area }}
  description {{ defaults.description_prefix }} loopback
 !
 ! --- Fabric Links ---
@@ -11,7 +18,6 @@ interface lo
 {% for link in links %}
 interface {{ link.interface }}
  ip address {{ link.ip }}
- mtu {{ defaults.fabric_link_mtu }}
  description {{ defaults.description_prefix }} {{ link.description }}
  ip ospf network point-to-point
  ip ospf area {{ ospf.area }}
@@ -23,17 +29,13 @@ interface {{ link.interface }}
 {% endfor %}
 {% if interfaces %}
 ! --- Host-Facing Interfaces ---
+! Note: switchport and VLAN config is platform-specific.
+! On FRR/Linux, these are configured via bridge/ip commands at the OS level.
+! The interface descriptions are managed through vtysh.
 !
 {% for iface in interfaces %}
 interface {{ iface.interface }}
  description {{ defaults.description_prefix }} {{ iface.description }}
-{% if iface.mode.value == 'access' %}
- switchport mode access
- switchport access vlan {{ iface.vlans[0] }}
-{% elif iface.mode.value == 'trunk' %}
- switchport mode trunk
- switchport trunk allowed vlan {{ iface.vlans | join(',') }}
-{% endif %}
 !
 {% endfor %}
 {% endif %}

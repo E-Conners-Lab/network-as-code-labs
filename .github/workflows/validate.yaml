@@ -1,0 +1,61 @@
+# Validation pipeline -- runs on every push to a feature or hotfix branch.
+#
+# This is the first gate in the CI/CD pipeline. Every data model change
+# must pass all four validation layers before it can be merged. If any
+# check fails, the workflow fails and the branch cannot be merged.
+
+name: Validate Data Model
+
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'hotfix/**'
+    paths:
+      - 'IAC_Labs/data/**'
+      - 'IAC_Labs/schemas/**'
+      - 'IAC_Labs/validators/**'
+      - 'IAC_Labs/validate.py'
+
+defaults:
+  run:
+    working-directory: IAC_Labs
+
+jobs:
+  validate:
+    name: Run Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run four-layer validation
+        run: uv run python validate.py
+
+      - name: Run pytest suite
+        run: uv run pytest -v --tb=short
+
+      - name: Generate HTML report
+        if: always()
+        run: |
+          uv run pytest --html=reports/validation-report.html --self-contained-html -v || true
+
+      - name: Upload validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: IAC_Labs/reports/validation-report.html
+          retention-days: 30
