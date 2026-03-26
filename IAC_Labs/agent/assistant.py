@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,6 +32,10 @@ from pathlib import Path
 import httpx
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Ollama API URL -- defaults to localhost but can be overridden with
+# OLLAMA_URL env var to point to a remote machine (e.g., a Mac with Apple Silicon)
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
 # ---------------------------------------------------------------------------
 # LLM Backends
@@ -64,34 +69,63 @@ def _call_claude(prompt: str, system: str = "") -> str:
         return f"Claude API error: {exc}"
 
 
-def _call_ollama(prompt: str, system: str = "", model: str = "llama3.2:3b") -> str:
-    """Call a local Ollama instance."""
+def _detect_ollama_model() -> str:
+    """Auto-detect the best available Ollama model.
+
+    Queries the local Ollama instance for installed models and picks
+    the largest one, since bigger models produce better results.
+    If detection fails, falls back to a sensible default.
+    """
+    try:
+        response = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=5.0)
+        response.raise_for_status()
+        models = response.json().get("models", [])
+        if not models:
+            return "llama3.1:8b"
+        # Sort by size descending, pick the largest
+        models.sort(key=lambda m: m.get("size", 0), reverse=True)
+        return models[0]["name"]
+    except Exception:
+        return "llama3.1:8b"
+
+
+def _call_ollama(prompt: str, system: str = "", model: str = "") -> str:
+    """Call a local Ollama instance.
+
+    If no model is specified, auto-detects the best installed model.
+    """
+    if not model:
+        model = _detect_ollama_model()
+
     try:
         response = httpx.post(
-            "http://localhost:11434/api/generate",
+            f"{OLLAMA_URL}/api/generate",
             json={
                 "model": model,
                 "prompt": prompt,
                 "system": system,
                 "stream": False,
             },
-            timeout=120.0,
+            timeout=600.0,
         )
         response.raise_for_status()
         return response.json().get("response", "(empty response)")
     except httpx.ConnectError:
         return (
-            "ERROR: Cannot connect to Ollama at localhost:11434.\n"
+            f"ERROR: Cannot connect to Ollama at {OLLAMA_URL}.\n"
             "Install and start Ollama:\n"
             "  curl -fsSL https://ollama.com/install.sh | sh\n"
-            "  ollama pull llama3.2:3b\n"
-            "  ollama serve"
+            "  ollama pull llama3.1:8b\n"
+            "  ollama serve\n"
+            "\n"
+            "To use a remote Ollama server (e.g., Mac with Apple Silicon):\n"
+            "  export OLLAMA_URL=http://<mac-ip>:11434"
         )
     except Exception as exc:
         return f"Ollama error: {exc}"
 
 
-def call_llm(prompt: str, system: str = "", backend: str = "claude", model: str = "llama3.2:3b") -> str:
+def call_llm(prompt: str, system: str = "", backend: str = "claude", model: str = "llama3.1:8b") -> str:
     """Call the configured LLM backend."""
     if backend == "claude":
         return _call_claude(prompt, system)
@@ -241,8 +275,8 @@ def main() -> None:
         help="LLM backend to use (default: claude)",
     )
     parser.add_argument(
-        "--model", default="llama3.2:3b",
-        help="Ollama model name (default: llama3.2:3b)",
+        "--model", default="",
+        help="Ollama model name (auto-detects largest installed model if omitted)",
     )
 
     subparsers = parser.add_subparsers(dest="mode", required=True)
@@ -255,6 +289,33 @@ def main() -> None:
     subparsers.add_parser("drift-triage", help="Analyze drift and recommend action")
 
     args = parser.parse_args()
+
+    # Auto-detect or let user pick model if using Ollama
+    if args.backend == "ollama" and not args.model:
+        try:
+            response = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=5.0)
+            models = response.json().get("models", [])
+            models.sort(key=lambda m: m.get("size", 0), reverse=True)
+
+            if len(models) == 0:
+                print("No Ollama models installed. Run: ollama pull llama3.1:8b")
+                sys.exit(1)
+            elif len(models) == 1:
+                args.model = models[0]["name"]
+            else:
+                print("Available Ollama models:")
+                for i, m in enumerate(models, 1):
+                    size_gb = m.get("size", 0) / (1024**3)
+                    print(f"  {i}. {m['name']} ({size_gb:.1f} GB)")
+                print()
+                choice = input(f"Select model [1-{len(models)}] (default: 1): ").strip()
+                if not choice:
+                    args.model = models[0]["name"]
+                else:
+                    idx = int(choice) - 1
+                    args.model = models[idx]["name"]
+        except Exception:
+            args.model = _detect_ollama_model()
 
     print()
     backend_name = "Claude API" if args.backend == "claude" else f"Ollama ({args.model})"

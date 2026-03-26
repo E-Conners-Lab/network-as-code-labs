@@ -38,7 +38,7 @@ ollama --version
 Pull the Llama 3.2 3B model:
 
 ```bash
-ollama pull llama3.2:3b
+ollama pull llama3.1:8b
 ```
 
 This downloads about 2GB. After it finishes, verify the model is available:
@@ -47,10 +47,10 @@ This downloads about 2GB. After it finishes, verify the model is available:
 ollama list
 ```
 
-You should see `llama3.2:3b` in the list. Test it with a quick prompt:
+You should see `llama3.1:8b` in the list. Test it with a quick prompt:
 
 ```bash
-ollama run llama3.2:3b "What is BGP in one sentence?"
+ollama run llama3.1:8b "What is BGP in one sentence?"
 ```
 
 If you get a response about the Border Gateway Protocol, Ollama is working.
