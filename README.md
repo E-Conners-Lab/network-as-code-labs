@@ -63,9 +63,13 @@ Build a test framework that validates the network after every deployment: config
 
 Detect when the network's actual state drifts from the declared intent, alert on it, and reconcile using three strategies: auto-remediate, PR-based review, or absorb the change.
 
-### Lab 7: AI Agent Integration (Coming Soon)
+### Lab 7: AI-Assisted Network Operations
 
-Connect the Engineer Brain agent to the NaC pipeline for AI-assisted validation diagnosis, natural language config generation, and post-deployment failure analysis.
+Build an MCP server exposing all NaC tools, and an AI assistant that answers network operations questions using live fabric data. Supports two LLM backends: Claude API (cloud) and Ollama/Llama 3.2 (local, free). Three modes: validation assistant, fabric Q&A, and drift triage.
+
+**What you learn:** Model Context Protocol (MCP), connecting LLMs to infrastructure tools, running open-source models locally, dual-backend architecture.
+
+**Build guide:** [docs/lab7-build-guide.md](IAC_Labs/docs/lab7-build-guide.md)
 
 ## Requirements
 
@@ -80,6 +84,7 @@ A Linux machine (or VM) with:
 | Git | 2.x | Version control |
 | Ansible | 2.15+ | Alternative config generation path (Lab 3) |
 | Terraform | 1.5+ | Alternative config generation path (Lab 3) |
+| Ollama | Latest | Local LLM for AI assistant (Lab 7) |
 
 A Proxmox VM with 2 vCPUs, 4 GB RAM, and 32 GB disk runs the entire lab comfortably. See the [Lab 1 build guide](IAC_Labs/docs/lab1-build-guide.md) for step-by-step VM setup.
 
