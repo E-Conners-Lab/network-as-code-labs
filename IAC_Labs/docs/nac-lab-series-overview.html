@@ -389,7 +389,7 @@
 
   .progress-bar-fill {
     height: 100%;
-    width: 57%;
+    width: 100%;
     background: linear-gradient(90deg, var(--accent), var(--accent2));
     border-radius: 3px;
     transition: width 1s ease;
@@ -452,7 +452,7 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background: linear-gradient(to bottom, var(--accent), var(--accent2) 57%, var(--coming) 57%);
+    background: linear-gradient(to bottom, var(--accent), var(--accent2));
   }
 
   .timeline-item {
@@ -583,7 +583,7 @@
 
   <!-- Progress -->
   <div class="progress-section">
-    <div class="progress-label">Series Progress: 4 of 7 Labs Complete</div>
+    <div class="progress-label">Series Progress: 7 of 7 Labs Complete</div>
     <div class="progress-bar-bg">
       <div class="progress-bar-fill"></div>
     </div>
@@ -648,40 +648,40 @@
       <div class="lab-status"><div class="status-dot"></div> Complete</div>
     </div>
 
-    <div class="lab-card coming">
+    <div class="lab-card complete">
       <div class="lab-number">Lab 05</div>
       <div class="lab-title">Post-Change Testing</div>
-      <div class="lab-description">Automated testing after every deployment: config verification, operational state checks, and health monitoring across the fabric.</div>
+      <div class="lab-description">31 pytest tests across three categories: config verification, operational state, and health checks. Data-model-driven expected values.</div>
       <div class="lab-tools">
         <span class="tool-tag">pytest</span>
-        <span class="tool-tag">Robot Framework</span>
-        <span class="tool-tag">Scrapli</span>
+        <span class="tool-tag">31 Tests</span>
+        <span class="tool-tag">3 Categories</span>
       </div>
-      <div class="lab-status"><div class="status-dot"></div> Coming Soon</div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
     </div>
 
-    <div class="lab-card coming">
+    <div class="lab-card complete">
       <div class="lab-number">Lab 06</div>
       <div class="lab-title">Drift Detection</div>
-      <div class="lab-description">Scheduled checks comparing live state against Git intent. Three reconciliation strategies: auto-remediate, PR review, or absorb.</div>
+      <div class="lab-description">Detect out-of-band changes, three reconciliation strategies (remediate, review, absorb), brownfield import for existing networks.</div>
       <div class="lab-tools">
-        <span class="tool-tag">Scheduled CI</span>
-        <span class="tool-tag">Config Diff</span>
+        <span class="tool-tag">Drift Engine</span>
         <span class="tool-tag">Reconciliation</span>
+        <span class="tool-tag">Brownfield Import</span>
       </div>
-      <div class="lab-status"><div class="status-dot"></div> Coming Soon</div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
     </div>
 
-    <div class="lab-card coming">
+    <div class="lab-card complete">
       <div class="lab-number">Lab 07</div>
-      <div class="lab-title">AI Agent Integration</div>
-      <div class="lab-description">Engineer Brain connected to the NaC pipeline. AI-assisted validation diagnosis, natural language config generation, and failure analysis.</div>
+      <div class="lab-title">AI-Assisted Operations</div>
+      <div class="lab-description">MCP server exposing 8 NaC tools. AI assistant with dual backends: Claude API (cloud) and Ollama/Llama 3.2 (local, free).</div>
       <div class="lab-tools">
+        <span class="tool-tag">MCP Server</span>
         <span class="tool-tag">Claude API</span>
-        <span class="tool-tag">Engineer Brain</span>
-        <span class="tool-tag">MCP Tools</span>
+        <span class="tool-tag">Ollama/Llama</span>
       </div>
-      <div class="lab-status"><div class="status-dot"></div> Coming Soon</div>
+      <div class="lab-status"><div class="status-dot"></div> Complete</div>
     </div>
 
   </div>
@@ -735,25 +735,37 @@
       </div>
     </div>
 
-    <div class="timeline-item coming">
+    <div class="timeline-item complete">
       <div class="timeline-dot"></div>
-      <div class="lab-number" style="color: var(--coming);">Lab 05</div>
-      <div class="lab-title" style="opacity:0.5;">Post-Change Testing</div>
-      <div class="lab-description" style="opacity:0.5;">Config verification + operational state + health checks</div>
+      <div class="lab-number" style="color: var(--accent);">Lab 05</div>
+      <div class="lab-title">Post-Change Testing</div>
+      <div class="lab-description">31 tests: config verification + operational state + health checks</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">pytest</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">31 Tests</span>
+      </div>
     </div>
 
-    <div class="timeline-item coming">
+    <div class="timeline-item complete">
       <div class="timeline-dot"></div>
-      <div class="lab-number" style="color: var(--coming);">Lab 06</div>
-      <div class="lab-title" style="opacity:0.5;">Drift Detection</div>
-      <div class="lab-description" style="opacity:0.5;">Scheduled state comparison + reconciliation workflows</div>
+      <div class="lab-number" style="color: var(--accent);">Lab 06</div>
+      <div class="lab-title">Drift Detection</div>
+      <div class="lab-description">Drift engine + 3 reconciliation strategies + brownfield import</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Drift Engine</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Brownfield</span>
+      </div>
     </div>
 
-    <div class="timeline-item coming">
+    <div class="timeline-item complete">
       <div class="timeline-dot"></div>
-      <div class="lab-number" style="color: var(--coming);">Lab 07</div>
-      <div class="lab-title" style="opacity:0.5;">AI Agent Integration</div>
-      <div class="lab-description" style="opacity:0.5;">Engineer Brain + Claude API + MCP tools</div>
+      <div class="lab-number" style="color: var(--accent);">Lab 07</div>
+      <div class="lab-title">AI-Assisted Operations</div>
+      <div class="lab-description">MCP server + Claude/Ollama dual backend assistant</div>
+      <div class="lab-tools">
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">MCP</span>
+        <span class="tool-tag" style="background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2);">Ollama</span>
+      </div>
     </div>
 
   </div>
@@ -765,16 +777,16 @@
       <div class="stat-label">FRR Devices</div>
     </div>
     <div class="stat">
-      <div class="stat-value">39</div>
-      <div class="stat-label">Validation Checks</div>
+      <div class="stat-value">70</div>
+      <div class="stat-label">Total Tests</div>
     </div>
     <div class="stat">
-      <div class="stat-value">3</div>
-      <div class="stat-label">Tooling Paths</div>
+      <div class="stat-value">8</div>
+      <div class="stat-label">MCP Tools</div>
     </div>
     <div class="stat">
-      <div class="stat-value">6</div>
-      <div class="stat-label">Utility Scripts</div>
+      <div class="stat-value">2</div>
+      <div class="stat-label">LLM Backends</div>
     </div>
     <div class="stat">
       <div class="stat-value">0</div>
