@@ -1,0 +1,73 @@
+# Scheduled drift detection -- runs on a cron schedule.
+#
+# This workflow periodically compares the running device configs against
+# the intended configs generated from the data model. If drift is
+# detected, it creates a GitHub issue with the drift report.
+#
+# Requires a self-hosted runner with access to the ContainerLab devices.
+
+name: Drift Detection
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger from the Actions tab
+
+defaults:
+  run:
+    working-directory: IAC_Labs
+
+jobs:
+  drift-check:
+    name: Check for Configuration Drift
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Generate intended configs
+        run: uv run python -m generators.python.render
+
+      - name: Run drift detection
+        id: drift
+        run: |
+          uv run python -m drift.detect --json > drift-results.json 2>&1 || true
+          uv run python -m drift.detect 2>&1 | tee drift-output.txt || true
+
+          # Check if any device has drift
+          if grep -q "DRIFT" drift-output.txt; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create issue on drift
+        if: steps.drift.outputs.drift_detected == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('IAC_Labs/drift-output.txt', 'utf8');
+            const timestamp = new Date().toISOString();
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Configuration drift detected - ${timestamp}`,
+              body: `## Drift Detection Report\n\nDrift was detected during the scheduled check.\n\n\`\`\`\n${output}\n\`\`\`\n\nReview the drift and choose a reconciliation strategy:\n- **Remediate**: \`uv run python -m drift.reconcile remediate\`\n- **Absorb**: \`uv run python -m drift.reconcile absorb --device <name>\``,
+              labels: ['drift', 'automated']
+            });
