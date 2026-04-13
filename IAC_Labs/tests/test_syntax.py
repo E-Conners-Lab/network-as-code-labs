@@ -43,7 +43,8 @@ class TestSyntaxValidationFailing:
 
         results = validate_syntax(tmp_path)
         fabric_fails = [
-            r for r in results
+            r
+            for r in results
             if not r.passed and r.file_path and "fabric.yaml" in r.file_path
         ]
         assert fabric_fails
@@ -58,12 +59,15 @@ class TestSyntaxValidationFailing:
 
         results = validate_syntax(tmp_path)
         topo_fails = [
-            r for r in results
+            r
+            for r in results
             if not r.passed and r.file_path and "topology.yaml" in r.file_path
         ]
         assert topo_fails
 
-    def test_dead_interval_less_than_hello(self, tmp_path: Path, base_dir: Path) -> None:
+    def test_dead_interval_less_than_hello(
+        self, tmp_path: Path, base_dir: Path
+    ) -> None:
         """OSPF dead interval < hello should fail the timer validator."""
         _mirror_data(base_dir, tmp_path)
         _patch_yaml(
@@ -73,7 +77,8 @@ class TestSyntaxValidationFailing:
 
         results = validate_syntax(tmp_path)
         underlay_fails = [
-            r for r in results
+            r
+            for r in results
             if not r.passed and r.file_path and "underlay.yaml" in r.file_path
         ]
         assert underlay_fails
@@ -88,7 +93,8 @@ class TestSyntaxValidationFailing:
 
         results = validate_syntax(tmp_path)
         iface_fails = [
-            r for r in results
+            r
+            for r in results
             if not r.passed and r.file_path and "interfaces.yaml" in r.file_path
         ]
         assert iface_fails
@@ -97,6 +103,7 @@ class TestSyntaxValidationFailing:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mirror_data(src: Path, dst: Path) -> None:
     """Copy the data directory so individual files can be modified."""

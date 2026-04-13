@@ -22,7 +22,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from validators import ValidationLevel, ValidationResult, parse_all_files
+from validators import ValidationResult, parse_all_files
 from validators.compliance_validator import validate_compliance
 from validators.format_validator import validate_format
 from validators.semantic_validator import validate_semantic
@@ -97,8 +97,11 @@ def main() -> None:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         result = subprocess.run(
             [
-                sys.executable, "-m", "pytest",
-                "--html", str(report_path),
+                sys.executable,
+                "-m",
+                "pytest",
+                "--html",
+                str(report_path),
                 "--self-contained-html",
                 "-v",
             ],
@@ -116,14 +119,18 @@ def main() -> None:
     format_results = validate_format(BASE_DIR)
     format_ok = _print_results("Layer 1: Format Validation", format_results)
     if not format_ok:
-        console.print("[bold red]Format validation failed. Fix YAML errors before proceeding.[/bold red]")
+        console.print(
+            "[bold red]Format validation failed. Fix YAML errors before proceeding.[/bold red]"
+        )
         sys.exit(1)
 
     # Layer 2: Syntax
     syntax_results = validate_syntax(BASE_DIR)
     syntax_ok = _print_results("Layer 2: Syntax Validation", syntax_results)
     if not syntax_ok:
-        console.print("[bold red]Syntax validation failed. Fix schema errors before proceeding.[/bold red]")
+        console.print(
+            "[bold red]Syntax validation failed. Fix schema errors before proceeding.[/bold red]"
+        )
         sys.exit(1)
 
     # Parse models for semantic and compliance layers
@@ -137,21 +144,32 @@ def main() -> None:
     semantic_results = validate_semantic(parsed)
     semantic_ok = _print_results("Layer 3: Semantic Validation", semantic_results)
     if not semantic_ok:
-        console.print("[bold red]Semantic validation failed. Fix logical inconsistencies.[/bold red]")
+        console.print(
+            "[bold red]Semantic validation failed. Fix logical inconsistencies.[/bold red]"
+        )
         sys.exit(1)
 
     # Layer 4: Compliance
     compliance_results = validate_compliance(parsed)
     compliance_ok = _print_results("Layer 4: Compliance Validation", compliance_results)
     if not compliance_ok:
-        console.print("[bold red]Compliance validation failed. Fix policy violations.[/bold red]")
+        console.print(
+            "[bold red]Compliance validation failed. Fix policy violations.[/bold red]"
+        )
         sys.exit(1)
 
     _print_summary(parsed)
 
-    total = len(format_results) + len(syntax_results) + len(semantic_results) + len(compliance_results)
+    total = (
+        len(format_results)
+        + len(syntax_results)
+        + len(semantic_results)
+        + len(compliance_results)
+    )
     console.print()
-    console.print(f"[bold green]All {total} checks passed across 4 validation layers.[/bold green]")
+    console.print(
+        f"[bold green]All {total} checks passed across 4 validation layers.[/bold green]"
+    )
     console.print()
 
 

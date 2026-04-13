@@ -11,9 +11,7 @@ This is the "working correctly" layer.
 from __future__ import annotations
 
 import re
-import subprocess
 
-import pytest
 
 from schemas.models import DeviceRole
 
@@ -161,7 +159,7 @@ class TestPingMesh:
         leafs = [d for d in topology.devices if d.role == DeviceRole.LEAF]
 
         for i, src in enumerate(leafs):
-            for dst in leafs[i + 1:]:
+            for dst in leafs[i + 1 :]:
                 conn = device_map[src.name]
                 result = conn.exec(f"ping -c 1 -W 2 {dst.loopback.ip}")
                 assert "1 packets received" in result or "1 received" in result, (

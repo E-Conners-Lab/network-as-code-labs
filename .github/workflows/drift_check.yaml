@@ -22,22 +22,28 @@ defaults:
 jobs:
   drift-check:
     name: Check for Configuration Drift
-    runs-on: self-hosted
+    runs-on: [self-hosted, clab-runner]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
 
-      - name: Set up Python
-        run: uv python install 3.13
-
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen
 
       - name: Generate intended configs
         run: uv run python -m generators.python.render
@@ -45,15 +51,29 @@ jobs:
       - name: Run drift detection
         id: drift
         run: |
-          uv run python -m drift.detect --json > drift-results.json 2>&1 || true
-          uv run python -m drift.detect 2>&1 | tee drift-output.txt || true
+          uv run python -m drift.detect --json > drift-results.json
+          uv run python -m drift.detect | tee drift-output.txt
+          python - <<'PY'
+          import os
+          import json
+          from pathlib import Path
 
-          # Check if any device has drift
-          if grep -q "DRIFT" drift-output.txt; then
-            echo "drift_detected=true" >> $GITHUB_OUTPUT
-          else
-            echo "drift_detected=false" >> $GITHUB_OUTPUT
-          fi
+          results = json.loads(Path("drift-results.json").read_text())
+          drifted = [item["device"] for item in results if item["has_drift"]]
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"drift_detected={'true' if drifted else 'false'}\n")
+              fh.write(f"drifted_devices={','.join(drifted)}\n")
+          PY
+
+      - name: Upload drift artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drift-report
+          path: |
+            IAC_Labs/drift-results.json
+            IAC_Labs/drift-output.txt
 
       - name: Create issue on drift
         if: steps.drift.outputs.drift_detected == 'true'
@@ -63,11 +83,47 @@ jobs:
             const fs = require('fs');
             const output = fs.readFileSync('IAC_Labs/drift-output.txt', 'utf8');
             const timestamp = new Date().toISOString();
+            const marker = '<!-- nac-drift-issue -->';
+            const body = `${marker}
+            ## Drift Detection Report
 
-            await github.rest.issues.create({
+            Drift was detected during the scheduled check at ${timestamp}.
+
+            Drifted devices: ${process.env.DRIFTED_DEVICES}
+
+            \`\`\`
+            ${output}
+            \`\`\`
+
+            Review the drift and choose a reconciliation strategy:
+            - Remediate: \`uv run python -m drift.reconcile remediate\`
+            - Absorb: \`uv run python -m drift.reconcile absorb --device <name>\``;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              title: `Configuration drift detected - ${timestamp}`,
-              body: `## Drift Detection Report\n\nDrift was detected during the scheduled check.\n\n\`\`\`\n${output}\n\`\`\`\n\nReview the drift and choose a reconciliation strategy:\n- **Remediate**: \`uv run python -m drift.reconcile remediate\`\n- **Absorb**: \`uv run python -m drift.reconcile absorb --device <name>\``,
-              labels: ['drift', 'automated']
+              state: 'open',
+              labels: 'drift,automated',
             });
+
+            const existing = issues.find((issue) => issue.body && issue.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                title: `Configuration drift detected - ${timestamp}`,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `Configuration drift detected - ${timestamp}`,
+                body,
+                labels: ['drift', 'automated']
+              });
+            }
+        env:
+          DRIFTED_DEVICES: ${{ steps.drift.outputs.drifted_devices }}

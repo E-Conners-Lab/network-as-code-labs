@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import re
 
-import pytest
-
 
 class TestDaemonHealth:
     """Verify that the required FRR daemons are running."""
@@ -22,33 +20,25 @@ class TestDaemonHealth:
         """Zebra must be running on every device."""
         for conn in fabric_devices:
             output = conn.exec("ps aux")
-            assert "/usr/lib/frr/zebra" in output, (
-                f"{conn.name}: zebra is not running"
-            )
+            assert "/usr/lib/frr/zebra" in output, f"{conn.name}: zebra is not running"
 
     def test_ospfd_running(self, fabric_devices) -> None:
         """ospfd must be running on every device."""
         for conn in fabric_devices:
             output = conn.exec("ps aux")
-            assert "/usr/lib/frr/ospfd" in output, (
-                f"{conn.name}: ospfd is not running"
-            )
+            assert "/usr/lib/frr/ospfd" in output, f"{conn.name}: ospfd is not running"
 
     def test_bgpd_running(self, fabric_devices) -> None:
         """bgpd must be running on every device."""
         for conn in fabric_devices:
             output = conn.exec("ps aux")
-            assert "/usr/lib/frr/bgpd" in output, (
-                f"{conn.name}: bgpd is not running"
-            )
+            assert "/usr/lib/frr/bgpd" in output, f"{conn.name}: bgpd is not running"
 
     def test_watchfrr_running(self, fabric_devices) -> None:
         """watchfrr must be running to restart daemons on failure."""
         for conn in fabric_devices:
             output = conn.exec("ps aux")
-            assert "watchfrr" in output, (
-                f"{conn.name}: watchfrr is not running"
-            )
+            assert "watchfrr" in output, f"{conn.name}: watchfrr is not running"
 
 
 class TestInterfaceHealth:
@@ -104,10 +94,13 @@ class TestRouteTableHealth:
         """Each device should have a minimum number of routes."""
         for conn in fabric_devices:
             output = conn.vtysh("show ip route")
-            route_count = len([
-                line for line in output.splitlines()
-                if line.strip().startswith(("O>", "C>", "K>", "B>"))
-            ])
+            route_count = len(
+                [
+                    line
+                    for line in output.splitlines()
+                    if line.strip().startswith(("O>", "C>", "K>", "B>"))
+                ]
+            )
             # Every device should have at least:
             # - Its own connected routes (loopback + fabric links + mgmt)
             # - OSPF routes to other loopbacks

@@ -45,9 +45,7 @@ def _find_duplicates(values: Iterable[_H]) -> set[_H]:
 def _check_asn(value: int) -> int:
     """Validate that an ASN falls within the BGP range defined by RFC 6793."""
     if not 1 <= value <= _BGP_ASN_MAX:
-        raise ValueError(
-            f"ASN must be between 1 and {_BGP_ASN_MAX}, got {value}"
-        )
+        raise ValueError(f"ASN must be between 1 and {_BGP_ASN_MAX}, got {value}")
     return value
 
 
@@ -60,9 +58,7 @@ def _validate_colon_pair(value: str, label: str) -> str:
         int(parts[0])
         int(parts[1])
     except ValueError as exc:
-        raise ValueError(
-            f"{label} parts must be integers, got '{value}'"
-        ) from exc
+        raise ValueError(f"{label} parts must be integers, got '{value}'") from exc
     return value
 
 
@@ -327,9 +323,7 @@ class UnderlayModel(BaseModel):
     def validate_no_duplicate_ips(self) -> UnderlayModel:
         """No IP address should appear on more than one link endpoint."""
         all_ips = (
-            ip_str
-            for link in self.links
-            for ip_str in (str(link.a_ip), str(link.b_ip))
+            ip_str for link in self.links for ip_str in (str(link.a_ip), str(link.b_ip))
         )
         dupes = _find_duplicates(all_ips)
         if dupes:
@@ -580,9 +574,7 @@ class InterfacesModel(BaseModel):
     @model_validator(mode="after")
     def validate_unique_interface_assignments(self) -> InterfacesModel:
         """No device:interface pair should be assigned more than once."""
-        dupes = _find_duplicates(
-            (i.device, i.interface) for i in self.interfaces
-        )
+        dupes = _find_duplicates((i.device, i.interface) for i in self.interfaces)
         if dupes:
             raise ValueError(f"Duplicate interface assignments: {dupes}")
         return self
@@ -612,8 +604,12 @@ class DefaultsModel(BaseModel):
     """Fabric-wide default values for parameters not explicitly set per device."""
 
     mtu: int = Field(ge=1280, le=9216, description="Default MTU for fabric interfaces")
-    fabric_link_mtu: int = Field(ge=1280, le=9216, description="MTU for spine-leaf links")
-    management_mtu: int = Field(ge=576, le=9216, description="MTU for management interfaces")
+    fabric_link_mtu: int = Field(
+        ge=1280, le=9216, description="MTU for spine-leaf links"
+    )
+    management_mtu: int = Field(
+        ge=576, le=9216, description="MTU for management interfaces"
+    )
     description_prefix: str = Field(min_length=1)
     timers: DefaultTimers
     flooding: FloodingConfig
@@ -709,8 +705,7 @@ class FabricDataModel(BaseModel):
         for network in self.networks.networks:
             if network.vrf not in vrf_names:
                 raise ValueError(
-                    f"Network '{network.name}' references undefined "
-                    f"VRF '{network.vrf}'"
+                    f"Network '{network.name}' references undefined VRF '{network.vrf}'"
                 )
         return self
 
@@ -721,8 +716,7 @@ class FabricDataModel(BaseModel):
         for iface in self.interfaces.interfaces:
             if iface.device not in device_names:
                 raise ValueError(
-                    f"Interface assignment references unknown "
-                    f"device '{iface.device}'"
+                    f"Interface assignment references unknown device '{iface.device}'"
                 )
         return self
 

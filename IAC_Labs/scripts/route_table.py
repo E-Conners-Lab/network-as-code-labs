@@ -76,15 +76,17 @@ def _parse_routes(device_name: str, output: str) -> list[Route]:
             interface = match.group(6) or match.group(7) or ""
             current_prefix = prefix
 
-            routes.append(Route(
-                device=device_name,
-                prefix=prefix,
-                protocol=PROTOCOL_MAP.get(proto_code, proto_code),
-                metric=metric,
-                next_hop=next_hop,
-                interface=interface.rstrip(","),
-                selected=selected,
-            ))
+            routes.append(
+                Route(
+                    device=device_name,
+                    prefix=prefix,
+                    protocol=PROTOCOL_MAP.get(proto_code, proto_code),
+                    metric=metric,
+                    next_hop=next_hop,
+                    interface=interface.rstrip(","),
+                    selected=selected,
+                )
+            )
             continue
 
         # Match ECMP continuation lines like:   *  via 10.0.1.3, eth2
@@ -93,15 +95,17 @@ def _parse_routes(device_name: str, output: str) -> list[Route]:
             line,
         )
         if ecmp_match and current_prefix:
-            routes.append(Route(
-                device=device_name,
-                prefix=f"  (ecmp) {current_prefix}",
-                protocol="",
-                metric="",
-                next_hop=ecmp_match.group(1),
-                interface=ecmp_match.group(2).rstrip(","),
-                selected=True,
-            ))
+            routes.append(
+                Route(
+                    device=device_name,
+                    prefix=f"  (ecmp) {current_prefix}",
+                    protocol="",
+                    metric="",
+                    next_hop=ecmp_match.group(1),
+                    interface=ecmp_match.group(2).rstrip(","),
+                    selected=True,
+                )
+            )
 
     return routes
 
@@ -110,7 +114,12 @@ async def _get_routes(device_name: str) -> list[Route]:
     """Collect routes from a single device."""
     container = f"{CLAB_PREFIX}-{device_name}"
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "vtysh", "-c", "show ip route",
+        "docker",
+        "exec",
+        container,
+        "vtysh",
+        "-c",
+        "show ip route",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -143,7 +152,9 @@ def main() -> None:
     """Collect and display routing tables."""
     parser = argparse.ArgumentParser(description="Structured routing table viewer")
     parser.add_argument("--device", type=str, help="Filter by device name")
-    parser.add_argument("--protocol", type=str, help="Filter by protocol (ospf, bgp, connected)")
+    parser.add_argument(
+        "--protocol", type=str, help="Filter by protocol (ospf, bgp, connected)"
+    )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 

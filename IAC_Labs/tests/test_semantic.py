@@ -11,11 +11,8 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-import pytest
 
 from schemas.models import (
-    Device,
-    DeviceRole,
     InterfaceAssignment,
     InterfaceMode,
     NetworkSegment,
@@ -30,7 +27,9 @@ class TestSemanticValidationPassing:
     def test_all_rules_pass(self, parsed_models: dict[str, Any]) -> None:
         results = validate_semantic(parsed_models)
         failed = [r for r in results if not r.passed]
-        assert not failed, f"Semantic failures: {[(r.rule_id, r.message) for r in failed]}"
+        assert not failed, (
+            f"Semantic failures: {[(r.rule_id, r.message) for r in failed]}"
+        )
 
     def test_all_16_rules_checked(self, parsed_models: dict[str, Any]) -> None:
         results = validate_semantic(parsed_models)
@@ -42,7 +41,9 @@ class TestSemanticValidationPassing:
 class TestSemanticValidationFailing:
     """Verify that semantic rules catch specific logical errors."""
 
-    def test_sem01_link_references_unknown_device(self, parsed_models: dict[str, Any]) -> None:
+    def test_sem01_link_references_unknown_device(
+        self, parsed_models: dict[str, Any]
+    ) -> None:
         """SEM-01: A link referencing a device not in topology should fail."""
         models = deepcopy(parsed_models)
         bad_link = P2PLink(
@@ -60,7 +61,9 @@ class TestSemanticValidationFailing:
         sem01 = [r for r in results if r.rule_id == "SEM-01"]
         assert any(not r.passed for r in sem01)
 
-    def test_sem04_network_references_undefined_vrf(self, parsed_models: dict[str, Any]) -> None:
+    def test_sem04_network_references_undefined_vrf(
+        self, parsed_models: dict[str, Any]
+    ) -> None:
         """SEM-04: A network referencing a VRF not in vrfs.yaml should fail."""
         models = deepcopy(parsed_models)
         bad_network = NetworkSegment(

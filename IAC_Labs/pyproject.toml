@@ -22,4 +22,7 @@ testpaths = ["tests"]
 addopts = "--tb=short -q"
 
 [dependency-groups]
-dev = []
+dev = [
+    "fpdf2>=2.8.7",
+    "markdown2>=2.5.5",
+]

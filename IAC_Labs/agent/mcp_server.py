@@ -32,7 +32,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -258,7 +257,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
         elif name == "run_tests":
             result = subprocess.run(
-                [sys.executable, "-m", "pytest", "tests/post_change/", "-v", "--tb=short"],
+                [
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/post_change/",
+                    "-v",
+                    "--tb=short",
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(BASE_DIR),
@@ -280,7 +286,9 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 async def main() -> None:
     """Run the MCP server over stdio."""
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+        await server.run(
+            read_stream, write_stream, server.create_initialization_options()
+        )
 
 
 if __name__ == "__main__":

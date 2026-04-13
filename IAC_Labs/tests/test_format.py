@@ -11,7 +11,6 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-import pytest
 
 from validators.format_validator import validate_format
 
@@ -47,20 +46,26 @@ class TestFormatValidationFailing:
         bad_file.write_text("fabric:\n  name: [unterminated\n")
 
         results = validate_format(tmp_path)
-        fabric_results = [r for r in results if r.file_path and "fabric.yaml" in r.file_path]
+        fabric_results = [
+            r for r in results if r.file_path and "fabric.yaml" in r.file_path
+        ]
         assert any(not r.passed for r in fabric_results)
 
     def test_missing_root_key(self, tmp_path: Path, base_dir: Path) -> None:
         """A file missing its expected root key should produce FMT-04."""
         _mirror_data_files(base_dir, tmp_path)
         bad_file = tmp_path / "data" / "fabric.yaml"
-        bad_file.write_text(textwrap.dedent("""\
+        bad_file.write_text(
+            textwrap.dedent("""\
             wrong_key:
               name: test
-        """))
+        """)
+        )
 
         results = validate_format(tmp_path)
-        fabric_results = [r for r in results if r.file_path and "fabric.yaml" in r.file_path]
+        fabric_results = [
+            r for r in results if r.file_path and "fabric.yaml" in r.file_path
+        ]
         assert any(r.rule_id == "FMT-04" and not r.passed for r in fabric_results)
 
 

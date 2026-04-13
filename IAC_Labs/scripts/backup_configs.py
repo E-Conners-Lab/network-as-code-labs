@@ -35,7 +35,12 @@ async def _backup_device(device_name: str, output_dir: Path) -> tuple[str, bool,
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            "docker", "exec", container, "vtysh", "-c", "show running-config",
+            "docker",
+            "exec",
+            container,
+            "vtysh",
+            "-c",
+            "show running-config",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -64,18 +69,19 @@ async def backup_all(output_dir: Path) -> list[tuple[str, bool, str]]:
     topology = parsed["topology"]
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    tasks = [
-        _backup_device(d.name, output_dir)
-        for d in topology.devices
-    ]
+    tasks = [_backup_device(d.name, output_dir) for d in topology.devices]
     return await asyncio.gather(*tasks)
 
 
 def main() -> None:
     """Run the backup and display results."""
-    parser = argparse.ArgumentParser(description="Backup running configs from all devices")
+    parser = argparse.ArgumentParser(
+        description="Backup running configs from all devices"
+    )
     parser.add_argument(
-        "--output-dir", type=str, default=None,
+        "--output-dir",
+        type=str,
+        default=None,
         help="Output directory (default: backups/<timestamp>)",
     )
     args = parser.parse_args()
@@ -108,7 +114,9 @@ def main() -> None:
     total = len(results)
     saved = sum(1 for _, s, _ in results if s)
     console.print()
-    console.print(f"[bold green]{saved}/{total} configs backed up to {output_dir}[/bold green]")
+    console.print(
+        f"[bold green]{saved}/{total} configs backed up to {output_dir}[/bold green]"
+    )
     console.print()
 
 

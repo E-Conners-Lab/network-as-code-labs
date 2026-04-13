@@ -77,7 +77,12 @@ def _normalize_config(text: str) -> list[str]:
 async def _get_running_config(container: str) -> str:
     """Pull the running config from a device."""
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "vtysh", "-c", "show running-config",
+        "docker",
+        "exec",
+        container,
+        "vtysh",
+        "-c",
+        "show running-config",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -104,12 +109,15 @@ async def _diff_device(device_name: str, configs_dir: Path) -> ConfigDiff:
     intended = _normalize_config(intended_text)
     running = _normalize_config(running_text)
 
-    diff = list(difflib.unified_diff(
-        intended, running,
-        fromfile=f"{device_name} (intended)",
-        tofile=f"{device_name} (running)",
-        lineterm="",
-    ))
+    diff = list(
+        difflib.unified_diff(
+            intended,
+            running,
+            fromfile=f"{device_name} (intended)",
+            tofile=f"{device_name} (running)",
+            lineterm="",
+        )
+    )
 
     return ConfigDiff(
         device=device_name,
@@ -128,34 +136,41 @@ async def diff_all(configs_dir: Path) -> list[ConfigDiff]:
         sys.exit(1)
 
     topology = parsed["topology"]
-    tasks = [
-        _diff_device(d.name, configs_dir)
-        for d in topology.devices
-    ]
+    tasks = [_diff_device(d.name, configs_dir) for d in topology.devices]
     return await asyncio.gather(*tasks)
 
 
 def main() -> None:
     """Run config diff and display results."""
     parser = argparse.ArgumentParser(description="Compare intended vs running configs")
-    parser.add_argument("--configs-dir", type=str, default="configs", help="Generated configs directory")
+    parser.add_argument(
+        "--configs-dir", type=str, default="configs", help="Generated configs directory"
+    )
     parser.add_argument("--json", action="store_true", help="Output as JSON")
     args = parser.parse_args()
 
     configs_dir = BASE_DIR / args.configs_dir
     if not configs_dir.exists():
         console.print(f"[red]Configs directory not found: {configs_dir}[/red]")
-        console.print("Run the generator first: uv run python -m generators.python.render")
+        console.print(
+            "Run the generator first: uv run python -m generators.python.render"
+        )
         sys.exit(1)
 
     diffs = asyncio.run(diff_all(configs_dir))
 
     if args.json:
-        print(json.dumps([asdict(d) for d in sorted(diffs, key=lambda x: x.device)], indent=2))
+        print(
+            json.dumps(
+                [asdict(d) for d in sorted(diffs, key=lambda x: x.device)], indent=2
+            )
+        )
         return
 
     console.print()
-    console.print(Panel("[bold]Network as Code -- Config Drift Check[/bold]", expand=False))
+    console.print(
+        Panel("[bold]Network as Code -- Config Drift Check[/bold]", expand=False)
+    )
     console.print()
 
     table = Table(title="Drift Summary")
@@ -167,8 +182,16 @@ def main() -> None:
 
     for d in sorted(diffs, key=lambda x: x.device):
         status = "[red]DRIFT[/red]" if d.has_drift else "[green]CLEAN[/green]"
-        diff_count = len([l for l in d.diff_lines if l.startswith("+") or l.startswith("-")])
-        table.add_row(d.device, status, str(d.intended_lines), str(d.running_lines), str(diff_count))
+        diff_count = len(
+            [l for l in d.diff_lines if l.startswith("+") or l.startswith("-")]
+        )
+        table.add_row(
+            d.device,
+            status,
+            str(d.intended_lines),
+            str(d.running_lines),
+            str(diff_count),
+        )
 
     console.print(table)
 
@@ -185,9 +208,13 @@ def main() -> None:
     clean = sum(1 for d in diffs if not d.has_drift)
     console.print()
     if clean == total:
-        console.print(f"[bold green]{clean}/{total} devices match intended config. No drift detected.[/bold green]")
+        console.print(
+            f"[bold green]{clean}/{total} devices match intended config. No drift detected.[/bold green]"
+        )
     else:
-        console.print(f"[bold red]{total - clean}/{total} devices have configuration drift.[/bold red]")
+        console.print(
+            f"[bold red]{total - clean}/{total} devices have configuration drift.[/bold red]"
+        )
     console.print()
 
 

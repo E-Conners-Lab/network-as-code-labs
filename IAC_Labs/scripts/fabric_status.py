@@ -89,7 +89,12 @@ class DeviceStatus:
 async def _exec(container: str, command: str) -> str:
     """Run a command in a container and return stdout."""
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "sh", "-c", command,
+        "docker",
+        "exec",
+        container,
+        "sh",
+        "-c",
+        command,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -104,13 +109,15 @@ def _parse_ospf_neighbors(output: str) -> list[OSPFNeighbor]:
         # Match lines like: 10.0.0.11  1 Full/-  24.126s  35.871s 10.0.1.1  eth1:10.0.1.0
         parts = line.split()
         if len(parts) >= 7 and re.match(r"\d+\.\d+\.\d+\.\d+", parts[0]):
-            neighbors.append(OSPFNeighbor(
-                neighbor_id=parts[0],
-                state=parts[2].split("/")[0],
-                interface=parts[6].split(":")[0] if ":" in parts[6] else parts[6],
-                address=parts[5],
-                uptime=parts[3],
-            ))
+            neighbors.append(
+                OSPFNeighbor(
+                    neighbor_id=parts[0],
+                    state=parts[2].split("/")[0],
+                    interface=parts[6].split(":")[0] if ":" in parts[6] else parts[6],
+                    address=parts[5],
+                    uptime=parts[3],
+                )
+            )
     return neighbors
 
 
@@ -146,14 +153,16 @@ def _parse_bgp_summary(output: str) -> list[BGPPeer]:
                 pfx = 0
                 state = state_or_pfx
 
-            peers.append(BGPPeer(
-                neighbor=ip,
-                name=name,
-                asn=int(match.group(3)),
-                state=state,
-                prefixes_received=pfx,
-                uptime=uptime,
-            ))
+            peers.append(
+                BGPPeer(
+                    neighbor=ip,
+                    name=name,
+                    asn=int(match.group(3)),
+                    state=state,
+                    prefixes_received=pfx,
+                    uptime=uptime,
+                )
+            )
     return peers
 
 
@@ -167,20 +176,25 @@ def _parse_interfaces(output: str) -> list[InterfaceStatus]:
             status = parts[1]
             ips = [p for p in parts[2:] if "/" in p and ":" not in p]
             ip = ips[0] if ips else ""
-            interfaces.append(InterfaceStatus(
-                name=name,
-                status=status,
-                ip_address=ip,
-            ))
+            interfaces.append(
+                InterfaceStatus(
+                    name=name,
+                    status=status,
+                    ip_address=ip,
+                )
+            )
     return interfaces
 
 
 def _count_routes(output: str) -> int:
     """Count the number of active routes in 'show ip route' output."""
-    return len([
-        line for line in output.splitlines()
-        if line.strip().startswith(("O>*", "C>*", "K>*", "B>*", "S>*"))
-    ])
+    return len(
+        [
+            line
+            for line in output.splitlines()
+            if line.strip().startswith(("O>*", "C>*", "K>*", "B>*", "S>*"))
+        ]
+    )
 
 
 async def _collect_device_status(device_name: str, role: str) -> DeviceStatus:
@@ -222,10 +236,7 @@ async def collect_fabric_status() -> list[DeviceStatus]:
         sys.exit(1)
 
     topology = parsed["topology"]
-    tasks = [
-        _collect_device_status(d.name, d.role.value)
-        for d in topology.devices
-    ]
+    tasks = [_collect_device_status(d.name, d.role.value) for d in topology.devices]
     return await asyncio.gather(*tasks)
 
 
@@ -342,7 +353,9 @@ def main() -> None:
     """Collect and display fabric status."""
     parser = argparse.ArgumentParser(description="Fabric status dashboard")
     parser.add_argument("--json", action="store_true", help="Output as JSON")
-    parser.add_argument("--detail", action="store_true", help="Show per-neighbor/peer details")
+    parser.add_argument(
+        "--detail", action="store_true", help="Show per-neighbor/peer details"
+    )
     args = parser.parse_args()
 
     statuses = asyncio.run(collect_fabric_status())
@@ -375,8 +388,14 @@ def main() -> None:
     est_bgp = sum(1 for s in statuses for p in s.bgp_peers if p.state == "Established")
 
     console.print()
-    health = "[bold green]HEALTHY[/bold green]" if (up == total and full_ospf == all_ospf and est_bgp == all_bgp) else "[bold red]DEGRADED[/bold red]"
-    console.print(f"Fabric health: {health}  |  Devices: {up}/{total}  |  OSPF: {full_ospf}/{all_ospf} Full  |  BGP: {est_bgp}/{all_bgp} Established")
+    health = (
+        "[bold green]HEALTHY[/bold green]"
+        if (up == total and full_ospf == all_ospf and est_bgp == all_bgp)
+        else "[bold red]DEGRADED[/bold red]"
+    )
+    console.print(
+        f"Fabric health: {health}  |  Devices: {up}/{total}  |  OSPF: {full_ospf}/{all_ospf} Full  |  BGP: {est_bgp}/{all_bgp} Established"
+    )
     console.print()
 
 

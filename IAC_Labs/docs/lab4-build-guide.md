@@ -59,7 +59,9 @@ cat deploy/scrapli_deploy.py
 
 ### How It Works
 
-The script does three things in order. First, it loads the data model to get the list of devices. Second, it reads the corresponding config file from the configs directory. Third, it writes the config into the container and loads it through `vtysh -f`, which applies the configuration to the running daemons without restarting anything.
+The deployment has two phases. Phase 1 handles the FRR control plane: the script loads the data model to get the list of devices, reads the corresponding config file from the configs directory, writes it into the container, and loads it through `vtysh -f`, which applies the configuration to the running daemons without restarting anything. Phase 2 handles the VXLAN dataplane: for each leaf and border device, the script generates and runs Linux networking commands that create VRF devices, VXLAN tunnel interfaces, bridges, and anycast gateway SVIs. Spines skip Phase 2 because they do not host VNIs.
+
+The dataplane commands are derived from the same data model that drives config generation. The script determines which VRFs and network segments belong to each device using the same logic as the render engine (borders get everything, leafs get VRFs matching their assigned VLANs). For each VRF it creates a Linux VRF device with a routing table, an L3VNI VXLAN interface for inter-subnet routing, and a bridge to link them. For each network segment it creates an L2VNI VXLAN interface, a per-VLAN bridge, and adds the anycast gateway IP to the bridge.
 
 The deployments are concurrent. All six devices are contacted at the same time using asyncio. The script uses `docker exec` because ContainerLab containers run on the same host and do not have SSH daemons. For production deployments to real network devices with SSH access, you would replace the docker exec calls with Scrapli SSH connections. The script structure (async, concurrent, dry-run support) stays the same.
 
@@ -85,7 +87,7 @@ Make sure the ContainerLab topology is running, then deploy:
 uv run python -m deploy.scrapli_deploy
 ```
 
-The script writes each config into its container, loads it through vtysh, and saves it to the startup configuration. If any device fails, the script reports which one and why.
+The script writes each config into its container, loads it through vtysh, saves it to the startup configuration, and provisions the VXLAN dataplane. Leaf and border devices will show "dataplane provisioned" in their status message. Spines only show "daemons restarted" because they do not host VNIs. If any device fails, the script reports which one and why.
 
 ### Verify the Deployment
 
@@ -105,19 +107,37 @@ Check BGP summary on spine1:
 docker exec clab-nac-spine-leaf-spine1 vtysh -c "show bgp summary"
 ```
 
-You should see five peers (spine2, leaf1, leaf2, border1, border2) in `Established` state with messages being exchanged. The IPv4 Unicast and L2VPN EVPN address families are both active.
+You should see five peers (spine2, leaf1, leaf2, border1, border2) in `Established` state with messages being exchanged. The IPv4 Unicast summary shows PfxRcvd values: spine2 sends 5 (all loopbacks), while each leaf/border sends 1 (their own loopback). The L2VPN EVPN summary shows EVPN prefixes: leafs send 2-3 Type-3 routes (one per VNI), borders send around 10 (Type-3 for all VNIs plus Type-5 IP prefix routes).
 
 If BGP peers show `Connect` instead of `Established`, OSPF has not finished propagating loopback routes yet. Wait another 30 seconds and check again. BGP peers use loopback addresses as their update source, so the underlay must be converged first.
 
-Check the running config to confirm everything loaded:
+Check the BGP IPv4 unicast table to see all six loopbacks being advertised:
 
 ```bash
-docker exec clab-nac-spine-leaf-spine1 vtysh -c "show running-config"
+docker exec clab-nac-spine-leaf-spine1 vtysh -c "show bgp ipv4 unicast"
 ```
 
-You should see the full FRR configuration: interface IPs with OSPF area assignments, the OSPF process with router-id and reference bandwidth, and the BGP section with cluster-id, all five neighbors, and route-reflector-client on the four non-RR peers.
+You should see 6 routes and 10 total paths. Each device's loopback /32 is present, with multipath entries showing routes via both spine1 (local) and spine2 (reflected).
 
-This is the moment that ties the entire series together. The data model from Lab 1, validated by Lab 2, generated into configs by Lab 3, is now running as live routing protocol state on six FRR routers. OSPF adjacencies are up, BGP sessions are established, and every bit of it came from YAML files in a Git repository.
+Check the EVPN table to see the overlay routes:
+
+```bash
+docker exec clab-nac-spine-leaf-spine1 vtysh -c "show bgp l2vpn evpn"
+```
+
+You should see around 26 EVPN prefixes. Type-3 (IMET) routes show each VTEP advertising which VNIs it participates in. Type-5 (IP Prefix) routes show VRF subnets being advertised by the border devices with their router MACs for inter-subnet routing.
+
+Verify the VXLAN dataplane on a leaf:
+
+```bash
+docker exec clab-nac-spine-leaf-leaf1 ip link show type vrf
+docker exec clab-nac-spine-leaf-leaf1 ip link show type vxlan
+docker exec clab-nac-spine-leaf-leaf1 ip route show vrf PRODUCTION
+```
+
+You should see the PRODUCTION VRF device in UP state, three VXLAN interfaces (the L3VNI for inter-subnet routing and one L2VNI per network segment), and connected routes for the SVI subnets in the VRF routing table.
+
+This is the moment that ties the entire series together. The data model from Lab 1, validated by Lab 2, generated into configs by Lab 3, is now running as live routing protocol state on six FRR routers. OSPF adjacencies are up, BGP sessions are established, EVPN routes are being exchanged through the route reflectors, and the VXLAN dataplane is provisioned with VRF isolation and anycast gateways. Every bit of it came from YAML files in a Git repository.
 
 ## Part 2: GitHub Actions Workflows
 

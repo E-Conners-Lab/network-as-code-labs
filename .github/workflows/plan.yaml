@@ -16,7 +16,11 @@ on:
       - 'IAC_Labs/schemas/**'
       - 'IAC_Labs/validators/**'
       - 'IAC_Labs/generators/**'
+      - 'IAC_Labs/tests/**'
       - 'IAC_Labs/validate.py'
+      - 'IAC_Labs/pyproject.toml'
+      - 'IAC_Labs/uv.lock'
+  workflow_dispatch:
 
 defaults:
   run:
@@ -26,9 +30,11 @@ jobs:
   plan:
     name: Validate and Plan
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       pull-requests: write
       contents: read
+      issues: write
 
     steps:
       - name: Checkout PR branch
@@ -36,16 +42,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
 
-      - name: Set up Python
-        run: uv python install 3.13
-
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen
 
       - name: Run four-layer validation
         run: uv run python validate.py
@@ -58,66 +66,105 @@ jobs:
 
       - name: Generate configs from main branch
         run: |
-          git stash
-          git checkout main
-          uv run python -m generators.python.render --output-dir configs-main 2>/dev/null || echo "No generator on main yet"
-          git checkout -
-          git stash pop || true
+          rm -rf ../main-worktree
+          git worktree add ../main-worktree origin/main
+          cd ../main-worktree/IAC_Labs
+          uv sync --frozen
+          uv run python -m generators.python.render --output-dir configs-main
 
       - name: Generate config diff
         id: diff
         run: |
-          if [ -d configs-main ] && [ "$(ls configs-main/*.conf 2>/dev/null)" ]; then
-            echo "## Config Change Plan" > plan.md
-            echo "" >> plan.md
-            echo "Changes that will be applied to devices if this PR is merged:" >> plan.md
-            echo "" >> plan.md
+          cp -R ../main-worktree/IAC_Labs/configs-main ./configs-main
+          echo "<!-- nac-plan-comment -->" > plan.md
+          echo "## Config Change Plan" >> plan.md
+          echo "" >> plan.md
+          echo "Changes that will be applied to devices if this PR is merged:" >> plan.md
+          echo "" >> plan.md
 
-            CHANGES=0
-            for conf in configs-pr/*.conf; do
-              DEVICE=$(basename "$conf" .conf)
-              MAIN_CONF="configs-main/${DEVICE}.conf"
-              if [ -f "$MAIN_CONF" ]; then
-                DIFF=$(diff -u "$MAIN_CONF" "$conf" || true)
-                if [ -n "$DIFF" ]; then
-                  echo "### ${DEVICE}" >> plan.md
+          changes=0
+          max_devices=6
+          shown=0
+
+          shopt -s nullglob
+          for conf in configs-pr/*.conf; do
+            device=$(basename "$conf" .conf)
+            main_conf="configs-main/${device}.conf"
+            if [ -f "$main_conf" ]; then
+              diff_file="diff-${device}.patch"
+              diff -u "$main_conf" "$conf" > "$diff_file" || true
+              if [ -s "$diff_file" ]; then
+                changes=$((changes + 1))
+                if [ "$shown" -lt "$max_devices" ]; then
+                  echo "### ${device}" >> plan.md
                   echo '```diff' >> plan.md
-                  echo "$DIFF" >> plan.md
+                  sed -n '1,200p' "$diff_file" >> plan.md
                   echo '```' >> plan.md
                   echo "" >> plan.md
-                  CHANGES=$((CHANGES + 1))
+                  shown=$((shown + 1))
                 fi
-              else
-                echo "### ${DEVICE} (new device)" >> plan.md
-                echo "New configuration file with $(wc -l < "$conf") lines." >> plan.md
-                echo "" >> plan.md
-                CHANGES=$((CHANGES + 1))
               fi
-            done
-
-            if [ "$CHANGES" -eq 0 ]; then
-              echo "No config changes detected. Data model changes did not affect generated configs." > plan.md
+            else
+              changes=$((changes + 1))
+              echo "### ${device} (new device)" >> plan.md
+              echo "New configuration file with $(wc -l < "$conf") lines." >> plan.md
+              echo "" >> plan.md
             fi
-          else
-            echo "## Config Change Plan" > plan.md
-            echo "" >> plan.md
-            echo "First deployment. All configs are new:" >> plan.md
-            echo "" >> plan.md
-            for conf in configs-pr/*.conf; do
-              DEVICE=$(basename "$conf" .conf)
-              echo "- **${DEVICE}**: $(wc -l < "$conf") lines" >> plan.md
-            done
+          done
+
+          if [ "$changes" -eq 0 ]; then
+            printf '%s\n' \
+              '<!-- nac-plan-comment -->' \
+              '## Config Change Plan' \
+              '' \
+              'No config changes detected. The PR changes do not affect generated device configs.' \
+              > plan.md
+          elif [ "$changes" -gt "$shown" ]; then
+            echo "_Showing ${shown} of ${changes} device changes. Full diff is attached as a workflow artifact._" >> plan.md
           fi
 
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-plan
+          path: |
+            IAC_Labs/plan.md
+            IAC_Labs/diff-*.patch
+
       - name: Post plan as PR comment
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
             const plan = fs.readFileSync('IAC_Labs/plan.md', 'utf8');
-            await github.rest.issues.createComment({
+            const marker = '<!-- nac-plan-comment -->';
+            const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: plan
             });
+
+            const existing = comments.find((comment) =>
+              comment.user.type === 'Bot' && comment.body.includes(marker)
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: plan,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: plan,
+              });
+            }
+
+      - name: Remove temporary worktree
+        if: always()
+        run: git worktree remove --force ../main-worktree || true

@@ -24,6 +24,7 @@ router bgp {{ device.asn }}
 {% endfor %}
  !
  address-family ipv4 unicast
+  network {{ device.loopback.ip }}/32
 {% for neighbor in neighbors %}
   neighbor {{ neighbor.ip }} activate
 {% endfor %}
@@ -33,5 +34,6 @@ router bgp {{ device.asn }}
 {% for neighbor in neighbors %}
   neighbor {{ neighbor.ip }} activate
 {% endfor %}
+  advertise-all-vni
  exit-address-family
 !

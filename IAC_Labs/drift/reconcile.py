@@ -31,8 +31,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from drift.detect import detect_drift, DeviceDrift
-from validators import parse_all_files
+from drift.detect import detect_drift
 
 console = Console()
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,7 +41,12 @@ CLAB_PREFIX = "clab-nac-spine-leaf"
 async def _run_docker_exec(container: str, command: str) -> tuple[int, str]:
     """Run a command inside a Docker container."""
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "sh", "-c", command,
+        "docker",
+        "exec",
+        container,
+        "sh",
+        "-c",
+        command,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -89,9 +93,17 @@ async def remediate(configs_dir: Path, device_filter: str | None = None) -> None
             "cp /tmp/frr_nac.conf /etc/frr/frr.conf && vtysh -c 'write memory' 2>&1",
         )
 
-        errors = [l for l in output2.splitlines() if "error" in l.lower() or "unknown" in l.lower()]
+        errors = [
+            l
+            for l in output2.splitlines()
+            if "error" in l.lower() or "unknown" in l.lower()
+        ]
         if errors:
-            table.add_row(drift.device, "[yellow]WARN[/yellow]", f"Config pushed with warnings: {errors[0][:60]}")
+            table.add_row(
+                drift.device,
+                "[yellow]WARN[/yellow]",
+                f"Config pushed with warnings: {errors[0][:60]}",
+            )
         else:
             table.add_row(drift.device, "[green]OK[/green]", "Intended config restored")
 
@@ -115,7 +127,10 @@ async def report(configs_dir: Path, device_filter: str | None = None) -> None:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     report_dir = BASE_DIR / "reports"
     report_dir.mkdir(exist_ok=True)
-    report_path = report_dir / f"drift-report-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.txt"
+    report_path = (
+        report_dir
+        / f"drift-report-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}.txt"
+    )
 
     lines: list[str] = []
     lines.append(f"Drift Report - {timestamp}")
@@ -151,12 +166,19 @@ async def absorb(configs_dir: Path, device_filter: str | None = None) -> None:
     the data model manually to reflect the new intent.
     """
     if not device_filter:
-        console.print("[red]Absorb requires --device to prevent accidentally overwriting all configs.[/red]")
+        console.print(
+            "[red]Absorb requires --device to prevent accidentally overwriting all configs.[/red]"
+        )
         sys.exit(1)
 
     container = f"{CLAB_PREFIX}-{device_filter}"
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "vtysh", "-c", "show running-config",
+        "docker",
+        "exec",
+        container,
+        "vtysh",
+        "-c",
+        "show running-config",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -177,11 +199,15 @@ async def absorb(configs_dir: Path, device_filter: str | None = None) -> None:
 
     # Save running config as the new intended config
     config_path.write_text(running_config)
-    console.print(f"[green]Absorbed running config from {device_filter} as new intended state.[/green]")
+    console.print(
+        f"[green]Absorbed running config from {device_filter} as new intended state.[/green]"
+    )
     console.print(f"Saved to {config_path}")
     console.print()
     console.print("[yellow]Note: The YAML data model has not been updated.[/yellow]")
-    console.print("[yellow]To make this permanent, update the data model to match[/yellow]")
+    console.print(
+        "[yellow]To make this permanent, update the data model to match[/yellow]"
+    )
     console.print("[yellow]the absorbed config and regenerate.[/yellow]")
 
 
@@ -191,18 +217,26 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="strategy", required=True)
 
     # Remediate
-    rem_parser = subparsers.add_parser("remediate", help="Push intended config to drifted devices")
+    rem_parser = subparsers.add_parser(
+        "remediate", help="Push intended config to drifted devices"
+    )
     rem_parser.add_argument("--device", type=str, help="Remediate a single device")
     rem_parser.add_argument("--configs-dir", type=str, default="configs")
 
     # Report
-    rep_parser = subparsers.add_parser("report", help="Generate drift report without changes")
+    rep_parser = subparsers.add_parser(
+        "report", help="Generate drift report without changes"
+    )
     rep_parser.add_argument("--device", type=str, help="Report on a single device")
     rep_parser.add_argument("--configs-dir", type=str, default="configs")
 
     # Absorb
-    abs_parser = subparsers.add_parser("absorb", help="Accept running config as new intent")
-    abs_parser.add_argument("--device", type=str, required=True, help="Device to absorb from")
+    abs_parser = subparsers.add_parser(
+        "absorb", help="Accept running config as new intent"
+    )
+    abs_parser.add_argument(
+        "--device", type=str, required=True, help="Device to absorb from"
+    )
     abs_parser.add_argument("--configs-dir", type=str, default="configs")
 
     args = parser.parse_args()
@@ -210,7 +244,12 @@ def main() -> None:
 
     console.print()
     strategy_name = args.strategy.upper()
-    console.print(Panel(f"[bold]Network as Code -- Drift Reconciliation ({strategy_name})[/bold]", expand=False))
+    console.print(
+        Panel(
+            f"[bold]Network as Code -- Drift Reconciliation ({strategy_name})[/bold]",
+            expand=False,
+        )
+    )
     console.print()
 
     if args.strategy == "remediate":

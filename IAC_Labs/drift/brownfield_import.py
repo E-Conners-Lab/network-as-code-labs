@@ -37,7 +37,12 @@ CLAB_PREFIX = "clab-nac-spine-leaf"
 async def _get_running_config(container: str) -> str:
     """Pull running config from a device."""
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "vtysh", "-c", "show running-config",
+        "docker",
+        "exec",
+        container,
+        "vtysh",
+        "-c",
+        "show running-config",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -59,7 +64,9 @@ def _parse_interfaces(config: str) -> list[dict]:
     for line in config.splitlines():
         stripped = line.strip()
 
-        if stripped.startswith("interface ") and not stripped.startswith("interface lo"):
+        if stripped.startswith("interface ") and not stripped.startswith(
+            "interface lo"
+        ):
             name = stripped.split()[1]
             current = {"name": name, "ip": None, "description": None, "ospf_area": None}
         elif stripped == "exit" and current:
@@ -108,10 +115,12 @@ def _parse_bgp(config: str) -> dict:
         bgp["cluster_id"] = match.group(1)
 
     for match in re.finditer(r"neighbor (\S+) remote-as (\d+)", config):
-        bgp["neighbors"].append({
-            "ip": match.group(1),
-            "asn": int(match.group(2)),
-        })
+        bgp["neighbors"].append(
+            {
+                "ip": match.group(1),
+                "asn": int(match.group(2)),
+            }
+        )
 
     return bgp
 
@@ -135,8 +144,12 @@ async def import_all(output_dir: Path) -> list[dict]:
     """Import running configs from all ContainerLab devices."""
     # Discover containers
     proc = await asyncio.create_subprocess_exec(
-        "docker", "ps", "--format", "{{.Names}}",
-        "--filter", f"name={CLAB_PREFIX}",
+        "docker",
+        "ps",
+        "--format",
+        "{{.Names}}",
+        "--filter",
+        f"name={CLAB_PREFIX}",
         stdout=asyncio.subprocess.PIPE,
     )
     stdout, _ = await proc.communicate()
@@ -161,18 +174,20 @@ async def import_all(output_dir: Path) -> list[dict]:
         role = "spine" if bgp.get("cluster_id") else "leaf"
         is_rr = bgp.get("cluster_id") is not None
 
-        devices.append({
-            "name": hostname,
-            "container": container,
-            "role": role,
-            "loopback": loopback,
-            "is_rr": is_rr,
-            "cluster_id": bgp.get("cluster_id"),
-            "asn": bgp.get("asn"),
-            "bgp_neighbors": bgp["neighbors"],
-            "ospf": ospf,
-            "interfaces": interfaces,
-        })
+        devices.append(
+            {
+                "name": hostname,
+                "container": container,
+                "role": role,
+                "loopback": loopback,
+                "is_rr": is_rr,
+                "cluster_id": bgp.get("cluster_id"),
+                "asn": bgp.get("asn"),
+                "bgp_neighbors": bgp["neighbors"],
+                "ospf": ospf,
+                "interfaces": interfaces,
+            }
+        )
 
     # Generate YAML data model files
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -180,18 +195,22 @@ async def import_all(output_dir: Path) -> list[dict]:
     # topology.yaml
     topo_devices = []
     for d in devices:
-        topo_devices.append({
-            "name": d["name"],
-            "role": d["role"],
-            "loopback": d["loopback"],
-            "management_ip": "unknown",
-            "asn": d["asn"],
-            "route_reflector": d["is_rr"],
-        })
+        topo_devices.append(
+            {
+                "name": d["name"],
+                "role": d["role"],
+                "loopback": d["loopback"],
+                "management_ip": "unknown",
+                "asn": d["asn"],
+                "route_reflector": d["is_rr"],
+            }
+        )
 
     topo_path = output_dir / "topology.yaml"
     with open(topo_path, "w") as f:
-        yaml.safe_dump({"devices": topo_devices}, f, default_flow_style=False, sort_keys=False)
+        yaml.safe_dump(
+            {"devices": topo_devices}, f, default_flow_style=False, sort_keys=False
+        )
 
     # fabric.yaml
     asns = set(d["asn"] for d in devices if d["asn"])
@@ -216,36 +235,50 @@ async def import_all(output_dir: Path) -> list[dict]:
                 link_key = tuple(sorted([d["name"], iface["name"]]))
                 if link_key not in seen_pairs:
                     seen_pairs.add(link_key)
-                    links.append({
-                        "device": d["name"],
-                        "interface": iface["name"],
-                        "ip": iface["ip"],
-                        "ospf_area": iface["ospf_area"],
-                    })
+                    links.append(
+                        {
+                            "device": d["name"],
+                            "interface": iface["name"],
+                            "ip": iface["ip"],
+                            "ospf_area": iface["ospf_area"],
+                        }
+                    )
 
     underlay_path = output_dir / "interfaces.yaml"
     with open(underlay_path, "w") as f:
-        yaml.safe_dump({"interfaces": links}, f, default_flow_style=False, sort_keys=False)
+        yaml.safe_dump(
+            {"interfaces": links}, f, default_flow_style=False, sort_keys=False
+        )
 
     # overlay.yaml (route reflectors)
-    rrs = [{"device": d["name"], "cluster_id": d["cluster_id"]} for d in devices if d["is_rr"]]
+    rrs = [
+        {"device": d["name"], "cluster_id": d["cluster_id"]}
+        for d in devices
+        if d["is_rr"]
+    ]
     overlay_path = output_dir / "overlay.yaml"
     with open(overlay_path, "w") as f:
-        yaml.safe_dump({"route_reflectors": rrs}, f, default_flow_style=False, sort_keys=False)
+        yaml.safe_dump(
+            {"route_reflectors": rrs}, f, default_flow_style=False, sort_keys=False
+        )
 
     return devices
 
 
 def main() -> None:
     """Run the brownfield import."""
-    parser = argparse.ArgumentParser(description="Import running configs into data model format")
+    parser = argparse.ArgumentParser(
+        description="Import running configs into data model format"
+    )
     parser.add_argument("--output-dir", type=str, default="data-imported")
     args = parser.parse_args()
 
     output_dir = BASE_DIR / args.output_dir
 
     console.print()
-    console.print(Panel("[bold]Network as Code -- Brownfield Import[/bold]", expand=False))
+    console.print(
+        Panel("[bold]Network as Code -- Brownfield Import[/bold]", expand=False)
+    )
     console.print()
 
     devices = asyncio.run(import_all(output_dir))
@@ -262,9 +295,13 @@ def main() -> None:
     for d in devices:
         rr = "[green]Yes[/green]" if d["is_rr"] else "No"
         table.add_row(
-            d["name"], d["role"], d["loopback"] or "none",
-            str(d["asn"]), rr,
-            str(len(d["bgp_neighbors"])), str(len(d["interfaces"])),
+            d["name"],
+            d["role"],
+            d["loopback"] or "none",
+            str(d["asn"]),
+            rr,
+            str(len(d["bgp_neighbors"])),
+            str(len(d["interfaces"])),
         )
 
     console.print(table)
@@ -272,7 +309,9 @@ def main() -> None:
     console.print(f"[green]Imported {len(devices)} devices to {output_dir}/[/green]")
     console.print()
     console.print("[yellow]Note: The generated YAML is a starting point.[/yellow]")
-    console.print("[yellow]Review and clean up the files before using them as your data model.[/yellow]")
+    console.print(
+        "[yellow]Review and clean up the files before using them as your data model.[/yellow]"
+    )
     console.print()
 
 

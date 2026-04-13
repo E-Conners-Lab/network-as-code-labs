@@ -40,10 +40,20 @@ class PingResult:
     rtt_ms: float | None = None
 
 
-async def _ping(source_container: str, source_name: str, dest_name: str, dest_ip: str) -> PingResult:
+async def _ping(
+    source_container: str, source_name: str, dest_name: str, dest_ip: str
+) -> PingResult:
     """Ping a destination IP from a source container."""
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", source_container, "ping", "-c", "1", "-W", "2", str(dest_ip),
+        "docker",
+        "exec",
+        source_container,
+        "ping",
+        "-c",
+        "1",
+        "-W",
+        "2",
+        str(dest_ip),
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -92,7 +102,9 @@ async def run_ping_mesh() -> list[PingResult]:
 
 def _print_matrix(results: list[PingResult]) -> None:
     """Print a ping matrix table."""
-    devices = sorted(set(r.source for r in results) | set(r.destination for r in results))
+    devices = sorted(
+        set(r.source for r in results) | set(r.destination for r in results)
+    )
 
     table = Table(title="Loopback Ping Mesh")
     table.add_column("From / To", style="cyan")
@@ -140,9 +152,13 @@ def main() -> None:
     passed = sum(1 for r in results if r.success)
     console.print()
     if passed == total:
-        console.print(f"[bold green]{passed}/{total} pings successful. Full mesh reachability confirmed.[/bold green]")
+        console.print(
+            f"[bold green]{passed}/{total} pings successful. Full mesh reachability confirmed.[/bold green]"
+        )
     else:
-        console.print(f"[bold red]{passed}/{total} pings successful. {total - passed} failures detected.[/bold red]")
+        console.print(
+            f"[bold red]{passed}/{total} pings successful. {total - passed} failures detected.[/bold red]"
+        )
     console.print()
 
 

@@ -55,25 +55,21 @@ def _generate_ascii(parsed: dict) -> str:
     lines.append("")
 
     # Leaf tier
-    leaf_str = "    ".join(
-        f"[ {l.name} ({l.loopback.ip}) ]"
-        for l in leafs
-    )
+    leaf_str = "    ".join(f"[ {l.name} ({l.loopback.ip}) ]" for l in leafs)
     lines.append(f"  {leaf_str}")
     lines.append("")
 
     # Border tier
-    border_str = "    ".join(
-        f"[ {b.name} ({b.loopback.ip}) ]"
-        for b in borders
-    )
+    border_str = "    ".join(f"[ {b.name} ({b.loopback.ip}) ]" for b in borders)
     lines.append(f"  {border_str}")
     lines.append("")
 
     # Link summary
     lines.append(f"  Links: {len(underlay.links)} point-to-point")
     lines.append(f"  Underlay: OSPF area {underlay.ospf.area}")
-    lines.append(f"  Overlay: iBGP with {len([s for s in spines if s.route_reflector])} route reflectors")
+    lines.append(
+        f"  Overlay: iBGP with {len([s for s in spines if s.route_reflector])} route reflectors"
+    )
     lines.append("")
 
     return "\n".join(lines)
@@ -128,7 +124,9 @@ def _generate_mermaid(parsed: dict) -> str:
 def main() -> None:
     """Generate and display the topology diagram."""
     parser = argparse.ArgumentParser(description="Topology diagram generator")
-    parser.add_argument("--mermaid", action="store_true", help="Output as Mermaid markdown")
+    parser.add_argument(
+        "--mermaid", action="store_true", help="Output as Mermaid markdown"
+    )
     args = parser.parse_args()
 
     parsed, errors = parse_all_files(BASE_DIR)
@@ -140,7 +138,9 @@ def main() -> None:
         print(_generate_mermaid(parsed))
     else:
         console.print()
-        console.print(Panel("[bold]Network as Code -- Topology Diagram[/bold]", expand=False))
+        console.print(
+            Panel("[bold]Network as Code -- Topology Diagram[/bold]", expand=False)
+        )
         console.print(_generate_ascii(parsed))
 
 

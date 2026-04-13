@@ -85,6 +85,30 @@ docker run --rm hello-world
 
 If you see "Hello from Docker!", you are good.
 
+### Kernel Modules for EVPN Dataplane
+
+The VXLAN/EVPN dataplane requires the `vrf` and `vxlan` kernel modules. Ubuntu cloud images ship a minimal kernel that may not include them by default. Install the extra modules package and load them:
+
+```bash
+sudo apt install -y linux-modules-extra-$(uname -r)
+sudo modprobe vrf
+sudo modprobe vxlan
+```
+
+Make them persistent across reboots:
+
+```bash
+echo -e "vrf\nvxlan" | sudo tee /etc/modules-load.d/nac-lab.conf
+```
+
+Verify they loaded:
+
+```bash
+lsmod | grep -E 'vrf|vxlan'
+```
+
+You should see both `vrf` and `vxlan` in the output. Without these modules, the FRR control plane (BGP, OSPF) will work fine, but the VXLAN tunnels and VRF isolation that make the EVPN overlay functional will not come up.
+
 ### ContainerLab
 
 ```bash

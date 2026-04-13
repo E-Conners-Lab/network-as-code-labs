@@ -62,7 +62,7 @@ Now look at a leaf:
 cat configs/leaf1.conf
 ```
 
-Leaf1's BGP section has only two neighbors: spine1 and spine2. No cluster-id, no route-reflector-client. It is a client. Its VRF section contains the BGP EVPN configuration for the PRODUCTION VRF and reference comments documenting the VXLAN segments. The VXLAN dataplane config (vxlan interfaces, bridge mappings, anycast gateways) is platform-specific and would be configured at the OS level on a real switch. In the FRR lab environment we handle the routing plane through vtysh and document the dataplane config as comments.
+Leaf1's BGP section has only two neighbors: spine1 and spine2. No cluster-id, no route-reflector-client. It is a client. Under IPv4 unicast it advertises its own loopback (`network 10.0.0.11/32`), and under L2VPN EVPN the `advertise-all-vni` directive enables EVPN route advertisement for any VNIs provisioned on this device. Its VRF section defines the PRODUCTION VRF with L3VNI 100000, configures the EVPN RD/RT mapping, and includes a per-VRF `router bgp 65000 vrf PRODUCTION` block with `redistribute connected` and `advertise ipv4 unicast` to inject the SVI subnets into EVPN as Type-5 routes. The VXLAN dataplane config (vxlan interfaces, bridges, anycast gateways) is documented as reference comments in the template. In ContainerLab, the deployment script provisions the dataplane using Linux networking commands (see Lab 4).
 
 Now look at a border:
 
@@ -116,13 +116,17 @@ cat generators/python/templates/frr_bgp.j2
 
 This is where the route reflector magic happens. The template iterates over the pre-computed neighbor list and adds `route-reflector-client` only when the current device is an RR and the neighbor is not. The render engine already filtered the neighbor list, so the template does not need to know about device roles.
 
+Under `address-family ipv4 unicast`, each device advertises its loopback with a `network` statement. This injects the loopback /32 into iBGP in addition to OSPF, giving you BGP-level reachability for overlay endpoints. Under `address-family l2vpn evpn`, the `advertise-all-vni` directive tells FRR to advertise any locally configured VNIs as EVPN Type-3 (IMET) routes. This is what makes the VXLAN flood-and-learn fabric work: each VTEP announces which VNIs it participates in so remote VTEPs know where to send BUM traffic.
+
 ### frr_vrf.j2
 
 ```bash
 cat generators/python/templates/frr_vrf.j2
 ```
 
-VRF BGP EVPN configuration with route distinguishers and route targets per VRF. The VXLAN dataplane configuration (vxlan interfaces, bridge mappings, anycast gateways) is included as reference comments because it is platform-specific. On a real EVPN switch these commands create the tunnels and gateways. In our FRR lab environment, the routing plane is what matters and the dataplane would be configured through Linux bridge and ip commands at the OS level.
+This template has three sections. First, VRF definitions that bind each VRF to its L3VNI. Second, EVPN VNI configuration under the global BGP instance that sets the route distinguisher and route targets per VRF. Third, per-VRF BGP routing blocks (`router bgp 65000 vrf PRODUCTION`) that enable `redistribute connected` under IPv4 unicast and `advertise ipv4 unicast` under L2VPN EVPN. The redistribute connected statement injects SVI gateway subnets into the VRF routing table. The advertise directive pushes those subnets into EVPN as Type-5 IP prefix routes, which is how remote leafs learn about subnets hosted on other leafs without needing a direct tunnel to every endpoint.
+
+The VXLAN dataplane configuration (vxlan interfaces, bridges, anycast gateway SVIs) is documented as reference comments in the template because it is not FRR vtysh configuration. On a hardware EVPN switch the ASIC handles VXLAN encap/decap natively. In ContainerLab, the deployment script provisions the equivalent using Linux networking commands (see Lab 4).
 
 ## Part 3: Path B -- Ansible
 

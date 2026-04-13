@@ -22,7 +22,6 @@ import argparse
 import asyncio
 import difflib
 import json
-import re
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -30,7 +29,6 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.syntax import Syntax
 from rich.table import Table
 
 from validators import parse_all_files
@@ -69,10 +67,17 @@ def _normalize_config(text: str) -> list[str]:
     that FRR converts to a different form internally.
     """
     skip_prefixes = (
-        "!", "end", "exit", "frr version", "frr defaults",
-        "Building configuration", "Current configuration",
-        "no ipv6 forwarding", "service integrated-vtysh-config",
-        "log syslog", "line vty",
+        "!",
+        "end",
+        "exit",
+        "frr version",
+        "frr defaults",
+        "Building configuration",
+        "Current configuration",
+        "no ipv6 forwarding",
+        "service integrated-vtysh-config",
+        "log syslog",
+        "line vty",
     )
     # Commands in our generated config that FRR converts internally:
     # - "network x.x.x.x/x area y" -> interface-level "ip ospf area"
@@ -80,9 +85,16 @@ def _normalize_config(text: str) -> list[str]:
     # - "auto-cost reference-bandwidth" is accepted but may not show in running
     # - "ip ospf hello-interval 10" is the default and FRR may omit it
     skip_patterns = (
-        "network ", "passive-interface ", "auto-cost reference-bandwidth",
-        "ip ospf hello-interval", "ip ospf passive",
-        "rd ", "route-target ", "vni ", "exit-vni", "exit-address-family",
+        "network ",
+        "passive-interface ",
+        "auto-cost reference-bandwidth",
+        "ip ospf hello-interval",
+        "ip ospf passive",
+        "rd ",
+        "route-target ",
+        "vni ",
+        "exit-vni",
+        "exit-address-family",
         "address-family l2vpn evpn",
     )
     lines = []
@@ -139,10 +151,22 @@ def _find_drift_items(intended_text: str, running_text: str) -> list[DriftItem]:
 
     # Lines to ignore in drift comparison
     noise_prefixes = (
-        "!", "log ", "frr ", "no ipv6", "service ", "exit",
-        "line vty", "network ", "passive-interface ", "auto-cost",
-        "ip ospf hello-interval", "ip ospf passive",
-        "rd ", "route-target ", "vni ", "exit-vni",
+        "!",
+        "log ",
+        "frr ",
+        "no ipv6",
+        "service ",
+        "exit",
+        "line vty",
+        "network ",
+        "passive-interface ",
+        "auto-cost",
+        "ip ospf hello-interval",
+        "ip ospf passive",
+        "rd ",
+        "route-target ",
+        "vni ",
+        "exit-vni",
         "address-family l2vpn evpn",
     )
 
@@ -153,22 +177,28 @@ def _find_drift_items(intended_text: str, running_text: str) -> list[DriftItem]:
     items: list[DriftItem] = []
 
     for section in ["hostname", "interfaces", "ospf", "bgp"]:
-        intended_set = {l for l in intended_sections.get(section, []) if not _is_noise(l)}
+        intended_set = {
+            l for l in intended_sections.get(section, []) if not _is_noise(l)
+        }
         running_set = {l for l in running_sections.get(section, []) if not _is_noise(l)}
 
         for line in sorted(intended_set - running_set):
-            items.append(DriftItem(
-                section=section,
-                intended=line,
-                actual="(missing)",
-            ))
+            items.append(
+                DriftItem(
+                    section=section,
+                    intended=line,
+                    actual="(missing)",
+                )
+            )
 
         for line in sorted(running_set - intended_set):
-            items.append(DriftItem(
-                section=section,
-                intended="(not in intent)",
-                actual=line,
-            ))
+            items.append(
+                DriftItem(
+                    section=section,
+                    intended="(not in intent)",
+                    actual=line,
+                )
+            )
 
     return items
 
@@ -176,7 +206,12 @@ def _find_drift_items(intended_text: str, running_text: str) -> list[DriftItem]:
 async def _collect_running_config(container: str) -> str:
     """Pull running config from a device."""
     proc = await asyncio.create_subprocess_exec(
-        "docker", "exec", container, "vtysh", "-c", "show running-config",
+        "docker",
+        "exec",
+        container,
+        "vtysh",
+        "-c",
+        "show running-config",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -209,12 +244,16 @@ async def detect_drift(
     for device_name in sorted(devices):
         config_path = configs_dir / f"{device_name}.conf"
         if not config_path.exists():
-            results.append(DeviceDrift(
-                device=device_name,
-                has_drift=True,
-                drift_items=[DriftItem("config", f"No intended config at {config_path}", "")],
-                timestamp=timestamp,
-            ))
+            results.append(
+                DeviceDrift(
+                    device=device_name,
+                    has_drift=True,
+                    drift_items=[
+                        DriftItem("config", f"No intended config at {config_path}", "")
+                    ],
+                    timestamp=timestamp,
+                )
+            )
             continue
 
         container = f"{CLAB_PREFIX}-{device_name}"
@@ -228,24 +267,30 @@ async def detect_drift(
         has_drift = intended_norm != running_norm
 
         # Section-level analysis for specific drift items
-        drift_items = _find_drift_items(intended_text, running_text) if has_drift else []
+        drift_items = (
+            _find_drift_items(intended_text, running_text) if has_drift else []
+        )
 
         # Unified diff for display
-        diff_lines = list(difflib.unified_diff(
-            _normalize_config(intended_text),
-            _normalize_config(running_text),
-            fromfile=f"{device_name} (intended)",
-            tofile=f"{device_name} (running)",
-            lineterm="",
-        ))
+        diff_lines = list(
+            difflib.unified_diff(
+                _normalize_config(intended_text),
+                _normalize_config(running_text),
+                fromfile=f"{device_name} (intended)",
+                tofile=f"{device_name} (running)",
+                lineterm="",
+            )
+        )
 
-        results.append(DeviceDrift(
-            device=device_name,
-            has_drift=has_drift,
-            drift_items=drift_items,
-            diff_text="\n".join(diff_lines),
-            timestamp=timestamp,
-        ))
+        results.append(
+            DeviceDrift(
+                device=device_name,
+                has_drift=has_drift,
+                drift_items=drift_items,
+                diff_text="\n".join(diff_lines),
+                timestamp=timestamp,
+            )
+        )
 
     return results
 
@@ -261,7 +306,9 @@ def _print_summary(results: list[DeviceDrift]) -> None:
     for r in results:
         if r.has_drift:
             status = "[red]DRIFT[/red]"
-            sections = ", ".join(sorted(set(i.section for i in r.drift_items))) or "unknown"
+            sections = (
+                ", ".join(sorted(set(i.section for i in r.drift_items))) or "unknown"
+            )
         else:
             status = "[green]CLEAN[/green]"
             sections = ""
@@ -318,7 +365,9 @@ def main() -> None:
         return
 
     console.print()
-    console.print(Panel("[bold]Network as Code -- Drift Detection[/bold]", expand=False))
+    console.print(
+        Panel("[bold]Network as Code -- Drift Detection[/bold]", expand=False)
+    )
     console.print()
 
     _print_summary(results)
@@ -330,9 +379,13 @@ def main() -> None:
 
     console.print()
     if drifted == 0:
-        console.print(f"[bold green]{clean}/{total} devices match intended config. No drift detected.[/bold green]")
+        console.print(
+            f"[bold green]{clean}/{total} devices match intended config. No drift detected.[/bold green]"
+        )
     else:
-        console.print(f"[bold red]{drifted}/{total} devices have configuration drift.[/bold red]")
+        console.print(
+            f"[bold red]{drifted}/{total} devices have configuration drift.[/bold red]"
+        )
     console.print()
 
     sys.exit(1 if drifted > 0 else 0)

@@ -13,10 +13,6 @@ present in the running config.
 
 from __future__ import annotations
 
-import pytest
-
-from schemas.models import DeviceRole
-
 
 class TestHostnames:
     """Verify that each device has the correct hostname."""

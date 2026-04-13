@@ -29,9 +29,6 @@ interface {{ link.interface }}
 {% endfor %}
 {% if interfaces %}
 ! --- Host-Facing Interfaces ---
-! Note: switchport and VLAN config is platform-specific.
-! On FRR/Linux, these are configured via bridge/ip commands at the OS level.
-! The interface descriptions are managed through vtysh.
 !
 {% for iface in interfaces %}
 interface {{ iface.interface }}

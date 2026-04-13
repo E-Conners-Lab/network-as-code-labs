@@ -125,7 +125,9 @@ def _call_ollama(prompt: str, system: str = "", model: str = "") -> str:
         return f"Ollama error: {exc}"
 
 
-def call_llm(prompt: str, system: str = "", backend: str = "claude", model: str = "llama3.1:8b") -> str:
+def call_llm(
+    prompt: str, system: str = "", backend: str = "claude", model: str = "llama3.1:8b"
+) -> str:
     """Call the configured LLM backend."""
     if backend == "claude":
         return _call_claude(prompt, system)
@@ -146,8 +148,11 @@ def _run_tool(module: str, args: list[str] | None = None) -> str:
     if args:
         cmd.extend(args)
     result = subprocess.run(
-        cmd, capture_output=True, text=True,
-        cwd=str(BASE_DIR), timeout=60,
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=str(BASE_DIR),
+        timeout=60,
     )
     return result.stdout.strip()
 
@@ -271,11 +276,14 @@ def main() -> None:
     """Run the AI assistant."""
     parser = argparse.ArgumentParser(description="AI-assisted network operations")
     parser.add_argument(
-        "--backend", choices=["claude", "ollama"], default="claude",
+        "--backend",
+        choices=["claude", "ollama"],
+        default="claude",
         help="LLM backend to use (default: claude)",
     )
     parser.add_argument(
-        "--model", default="",
+        "--model",
+        default="",
         help="Ollama model name (auto-detects largest installed model if omitted)",
     )
 
@@ -283,7 +291,9 @@ def main() -> None:
 
     subparsers.add_parser("validation-assist", help="Explain validation failures")
 
-    qa_parser = subparsers.add_parser("fabric-qa", help="Ask questions about the fabric")
+    qa_parser = subparsers.add_parser(
+        "fabric-qa", help="Ask questions about the fabric"
+    )
     qa_parser.add_argument("question", help="The question to ask")
 
     subparsers.add_parser("drift-triage", help="Analyze drift and recommend action")
@@ -318,7 +328,9 @@ def main() -> None:
             args.model = _detect_ollama_model()
 
     print()
-    backend_name = "Claude API" if args.backend == "claude" else f"Ollama ({args.model})"
+    backend_name = (
+        "Claude API" if args.backend == "claude" else f"Ollama ({args.model})"
+    )
     print(f"Backend: {backend_name}")
     print(f"Mode: {args.mode}")
     print("-" * 50)

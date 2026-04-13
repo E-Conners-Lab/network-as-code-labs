@@ -10,7 +10,6 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-import pytest
 
 from validators.compliance_validator import validate_compliance
 
@@ -21,7 +20,9 @@ class TestComplianceValidationPassing:
     def test_all_rules_pass(self, parsed_models: dict[str, Any]) -> None:
         results = validate_compliance(parsed_models)
         failed = [r for r in results if not r.passed]
-        assert not failed, f"Compliance failures: {[(r.rule_id, r.message) for r in failed]}"
+        assert not failed, (
+            f"Compliance failures: {[(r.rule_id, r.message) for r in failed]}"
+        )
 
     def test_all_7_rules_checked(self, parsed_models: dict[str, Any]) -> None:
         results = validate_compliance(parsed_models)
@@ -48,6 +49,7 @@ class TestComplianceValidationFailing:
         link = models["underlay"].links[0]
         # Widen from /31 to /30
         from ipaddress import IPv4Interface
+
         object.__setattr__(link, "a_ip", IPv4Interface("10.0.1.0/30"))
         object.__setattr__(link, "b_ip", IPv4Interface("10.0.1.1/30"))
 
@@ -55,7 +57,9 @@ class TestComplianceValidationFailing:
         cmp02 = [r for r in results if r.rule_id == "CMP-02"]
         assert any(not r.passed for r in cmp02)
 
-    def test_cmp03_wrong_description_prefix(self, parsed_models: dict[str, Any]) -> None:
+    def test_cmp03_wrong_description_prefix(
+        self, parsed_models: dict[str, Any]
+    ) -> None:
         """CMP-03: Non-standard description prefix violates policy."""
         models = deepcopy(parsed_models)
         models["defaults"].description_prefix = "CUSTOM-Prefix"
@@ -64,7 +68,9 @@ class TestComplianceValidationFailing:
         cmp03 = [r for r in results if r.rule_id == "CMP-03"]
         assert any(not r.passed for r in cmp03)
 
-    def test_cmp04_arp_suppression_disabled(self, parsed_models: dict[str, Any]) -> None:
+    def test_cmp04_arp_suppression_disabled(
+        self, parsed_models: dict[str, Any]
+    ) -> None:
         """CMP-04: ARP suppression disabled violates policy."""
         models = deepcopy(parsed_models)
         models["defaults"].arp_suppression = False
@@ -77,6 +83,7 @@ class TestComplianceValidationFailing:
         """CMP-05: RR cluster ID not matching loopback violates policy."""
         models = deepcopy(parsed_models)
         from ipaddress import IPv4Address
+
         rr = models["overlay"].route_reflectors[0]
         object.__setattr__(rr, "cluster_id", IPv4Address("1.2.3.4"))
 

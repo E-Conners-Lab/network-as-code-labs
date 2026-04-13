@@ -66,19 +66,23 @@ def _get_device_links(device_name: str, model: FabricDataModel) -> list[FabricLi
     links: list[FabricLink] = []
     for link in model.underlay.links:
         if link.a_device == device_name:
-            links.append(FabricLink(
-                interface=link.a_interface,
-                ip=str(link.a_ip),
-                peer_device=link.b_device,
-                description=f"to {link.b_device} {link.b_interface}",
-            ))
+            links.append(
+                FabricLink(
+                    interface=link.a_interface,
+                    ip=str(link.a_ip),
+                    peer_device=link.b_device,
+                    description=f"to {link.b_device} {link.b_interface}",
+                )
+            )
         elif link.b_device == device_name:
-            links.append(FabricLink(
-                interface=link.b_interface,
-                ip=str(link.b_ip),
-                peer_device=link.a_device,
-                description=f"to {link.a_device} {link.a_interface}",
-            ))
+            links.append(
+                FabricLink(
+                    interface=link.b_interface,
+                    ip=str(link.b_ip),
+                    peer_device=link.a_device,
+                    description=f"to {link.a_device} {link.a_interface}",
+                )
+            )
     return links
 
 
@@ -93,9 +97,7 @@ def _get_bgp_neighbors(device: Device, model: FabricDataModel) -> list[BGPNeighb
     """
     rr_devices = {rr.device for rr in model.overlay.route_reflectors}
     rr_loopbacks = {
-        d.name: d.loopback.ip
-        for d in model.topology.devices
-        if d.name in rr_devices
+        d.name: d.loopback.ip for d in model.topology.devices if d.name in rr_devices
     }
     all_loopbacks = {d.name: d.loopback.ip for d in model.topology.devices}
 
@@ -106,19 +108,23 @@ def _get_bgp_neighbors(device: Device, model: FabricDataModel) -> list[BGPNeighb
         for other in model.topology.devices:
             if other.name == device.name:
                 continue
-            neighbors.append(BGPNeighbor(
-                ip=other.loopback.ip,
-                peer_device=other.name,
-                is_rr=other.name in rr_devices,
-            ))
+            neighbors.append(
+                BGPNeighbor(
+                    ip=other.loopback.ip,
+                    peer_device=other.name,
+                    is_rr=other.name in rr_devices,
+                )
+            )
     else:
         # Non-RR peers only with route reflectors
         for rr_name, rr_ip in sorted(rr_loopbacks.items()):
-            neighbors.append(BGPNeighbor(
-                ip=rr_ip,
-                peer_device=rr_name,
-                is_rr=True,
-            ))
+            neighbors.append(
+                BGPNeighbor(
+                    ip=rr_ip,
+                    peer_device=rr_name,
+                    is_rr=True,
+                )
+            )
 
     return neighbors
 
@@ -159,7 +165,9 @@ def _get_device_vrfs(device: Device, model: FabricDataModel) -> list[VRFConfig]:
     return [v for v in model.vrfs.vrfs if v.name in vrf_names]
 
 
-def _get_device_networks(device: Device, model: FabricDataModel) -> list[NetworkSegment]:
+def _get_device_networks(
+    device: Device, model: FabricDataModel
+) -> list[NetworkSegment]:
     """Get network segments relevant to this device."""
     if device.role == DeviceRole.SPINE:
         return []
@@ -175,7 +183,9 @@ def _get_device_networks(device: Device, model: FabricDataModel) -> list[Network
     return [n for n in model.networks.networks if n.vlan_id in device_vlans]
 
 
-def _get_device_interfaces(device: Device, model: FabricDataModel) -> list[InterfaceAssignment]:
+def _get_device_interfaces(
+    device: Device, model: FabricDataModel
+) -> list[InterfaceAssignment]:
     """Get host-facing interface assignments for this device."""
     return [i for i in model.interfaces.interfaces if i.device == device.name]
 
@@ -249,7 +259,10 @@ def main() -> None:
     if errors:
         for e in errors:
             print(f"  FAIL  {e.rule_id}  {e.message}", file=sys.stderr)
-        print("\nData model has errors. Fix them before generating configs.", file=sys.stderr)
+        print(
+            "\nData model has errors. Fix them before generating configs.",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
     model = FabricDataModel.model_validate(parsed)
