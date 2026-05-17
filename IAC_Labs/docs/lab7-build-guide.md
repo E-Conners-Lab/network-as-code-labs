@@ -8,7 +8,7 @@ Labs 1 through 6 created a complete automation stack: data model, validation, co
 
 There are two pieces. The MCP server wraps every tool we built as an MCP tool, making them callable by Claude Code or any MCP-compatible client. The AI assistant is a standalone script that gathers fabric data, sends it to an LLM with a question, and returns a useful answer.
 
-The assistant supports two LLM backends. Claude via the Anthropic API for people who have API access, and Ollama running Llama 3.2 locally for people who want a free, private, no-API-key option. Both backends use the same prompts and produce comparable results. The choice is a command-line flag.
+The assistant supports two LLM backends. Claude via the Anthropic API for people who have API access, and Ollama running Llama 3.1 8B locally for people who want a free, private, no-API-key option. Both backends use the same prompts and produce comparable results. The choice is a command-line flag.
 
 ## Prerequisites
 
@@ -23,10 +23,10 @@ All 6 devices UP, no drift detected.
 
 ## Part 1: Install Ollama and Pull a Model
 
-Ollama is an open-source tool that runs LLMs locally. It supports dozens of models including Llama, Mistral, and Gemma. We use Llama 3.2 3B because it fits in 4GB of RAM and runs on CPU.
+Ollama is an open-source tool that runs LLMs locally. It supports dozens of models including Llama, Mistral, and Gemma. We use Llama 3.1 8B. It runs on CPU with no GPU required, though responses will be slower than with a GPU.
 
 ```bash
-curl -fsSL https://ollama.com/install.sh | sudo sh
+curl -fsSL https://ollama.com/install.sh | sh
 ```
 
 Verify it is running:
@@ -35,13 +35,13 @@ Verify it is running:
 ollama --version
 ```
 
-Pull the Llama 3.2 3B model:
+Pull the Llama 3.1 8B model:
 
 ```bash
 ollama pull llama3.1:8b
 ```
 
-This downloads about 2GB. After it finishes, verify the model is available:
+This downloads about 4.7 GB. After it finishes, verify the model is available:
 
 ```bash
 ollama list
@@ -92,7 +92,7 @@ To use the MCP server with Claude Code, add it to your MCP configuration. In you
     "nac-fabric": {
       "command": "uv",
       "args": ["run", "python", "-m", "agent.mcp_server"],
-      "cwd": "/home/elliot/network-as-code-labs"
+      "cwd": "/path/to/network-as-code-labs/IAC_Labs"
     }
   }
 }
@@ -148,6 +148,13 @@ export ANTHROPIC_API_KEY='your-key-here'
 ```
 
 If you do not have one, use `--backend ollama` for everything. The results are comparable for network operations questions.
+
+By default the assistant expects Ollama at `http://localhost:11434`. If Ollama is running on a different machine, override the URL with the `OLLAMA_URL` environment variable:
+
+```bash
+export OLLAMA_URL=http://192.168.1.10:11434
+uv run python -m agent.assistant --backend ollama fabric-qa "Is the fabric healthy?"
+```
 
 ### Mode 1: Validation Assistant
 
@@ -227,14 +234,14 @@ Ollama/Llama is free, runs locally, and keeps all data on your machine. It is sl
 
 For a YouTube demo, Ollama is the better choice because your viewers can follow along without an API key. For production use, Claude gives better results.
 
-You can also swap models in Ollama. If you have more RAM or a GPU:
+You can also swap models in Ollama. If you have more RAM or a GPU, try a larger model:
 
 ```bash
-ollama pull llama3.1:8b
-uv run python -m agent.assistant --backend ollama --model llama3.1:8b fabric-qa "Is the fabric healthy?"
+ollama pull llama3.3:70b
+uv run python -m agent.assistant --backend ollama --model llama3.3:70b fabric-qa "Is the fabric healthy?"
 ```
 
-The `--model` flag lets you try different models without changing any code.
+The `--model` flag lets you try different models without changing any code. If you omit it, the assistant auto-detects the largest model installed on your Ollama instance.
 
 ## Part 5: Commit Lab 7
 
@@ -269,9 +276,9 @@ Third, that AI assistance is practical today for network operations. The validat
 
 ## Troubleshooting
 
-**Ollama "connection refused"**: Make sure Ollama is running. Check with `systemctl status ollama` or start it with `ollama serve` in another terminal.
+**Ollama "connection refused" or timeout**: Make sure Ollama is running. Check with `systemctl status ollama` or start it with `ollama serve` in another terminal. If Ollama is on a different machine, set `export OLLAMA_URL=http://<host>:11434` before running the assistant.
 
-**Ollama is slow**: The 3B model runs on CPU in about 10-30 seconds per response. If you need faster responses, use a GPU or switch to the Claude backend.
+**Ollama is slow**: The 8B model runs on CPU in about 30-90 seconds per response depending on hardware. If you need faster responses, use a GPU or switch to the Claude backend.
 
 **Claude API "key not set"**: Set the environment variable with `export ANTHROPIC_API_KEY='your-key'`. The key is never stored in code.
 

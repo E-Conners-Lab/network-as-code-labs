@@ -51,21 +51,33 @@ Translate the validated data model into per-device FRR configurations using thre
 
 **Build guide:** [docs/lab3-build-guide.md](IAC_Labs/docs/lab3-build-guide.md)
 
-### Lab 4: CI/CD Pipeline for Network Changes (Coming Soon)
+### Lab 4: CI/CD Pipeline for Network Changes
 
 Wire the validation and generation steps into a GitHub Actions pipeline. Feature branch pushes trigger validation, pull requests trigger config generation with diffs, and merges to main trigger deployment via Scrapli.
 
-### Lab 5: Post-Change Validation and Testing (Coming Soon)
+**What you learn:** GitOps for networking, multi-stage pipeline gates, branching strategy, automated config diffing on PRs.
+
+**Build guide:** [docs/lab4-build-guide.md](IAC_Labs/docs/lab4-build-guide.md)
+
+### Lab 5: Post-Change Validation and Testing
 
 Build a test framework that validates the network after every deployment: configuration verification, operational state checks, and health tests.
 
-### Lab 6: Drift Detection and Reconciliation (Coming Soon)
+**What you learn:** Difference between "deployed correctly" and "working correctly", data-model-driven test generation, pytest parametrization, HTML reporting.
+
+**Build guide:** [docs/lab5-build-guide.md](IAC_Labs/docs/lab5-build-guide.md)
+
+### Lab 6: Drift Detection and Reconciliation
 
 Detect when the network's actual state drifts from the declared intent, alert on it, and reconcile using three strategies: auto-remediate, PR-based review, or absorb the change.
 
+**What you learn:** Config normalization for meaningful comparison, scheduled drift jobs, brownfield import, reconciliation trade-offs.
+
+**Build guide:** [docs/lab6-build-guide.md](IAC_Labs/docs/lab6-build-guide.md)
+
 ### Lab 7: AI-Assisted Network Operations
 
-Build an MCP server exposing all NaC tools, and an AI assistant that answers network operations questions using live fabric data. Supports two LLM backends: Claude API (cloud) and Ollama/Llama 3.2 (local, free). Three modes: validation assistant, fabric Q&A, and drift triage.
+Build an MCP server exposing all NaC tools, and an AI assistant that answers network operations questions using live fabric data. Supports two LLM backends: Claude API (cloud) and Ollama/Llama 3.1 (local, free). Three modes: validation assistant, fabric Q&A, and drift triage.
 
 **What you learn:** Model Context Protocol (MCP), connecting LLMs to infrastructure tools, running open-source models locally, dual-backend architecture.
 
