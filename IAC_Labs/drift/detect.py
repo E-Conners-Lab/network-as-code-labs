@@ -96,6 +96,11 @@ def _normalize_config(text: str) -> list[str]:
         "exit-vni",
         "exit-address-family",
         "address-family l2vpn evpn",
+        # FRR emits top-level vrf stanzas and internal BGP defaults in
+        # show running-config that aren't part of our generated intent.
+        "vrf ",
+        "vnc ",
+        "vrf-policy ",
     )
     lines = []
     for line in text.splitlines():
@@ -136,6 +141,10 @@ def _extract_sections(text: str) -> dict[str, list[str]]:
             current = "ospf"
         elif stripped.startswith("router bgp"):
             current = "bgp"
+        elif stripped.startswith("vrf "):
+            # Top-level vrf stanzas are Linux VRF device config emitted by
+            # FRR in show running-config. They're not part of our intent.
+            current = "other"
         elif stripped.startswith("exit"):
             continue
 
@@ -168,6 +177,9 @@ def _find_drift_items(intended_text: str, running_text: str) -> list[DriftItem]:
         "vni ",
         "exit-vni",
         "address-family l2vpn evpn",
+        "vrf ",
+        "vnc ",
+        "vrf-policy ",
     )
 
     def _is_noise(line: str) -> bool:
