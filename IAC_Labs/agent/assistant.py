@@ -33,9 +33,9 @@ import httpx
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Ollama API URL -- defaults to localhost but can be overridden with
-# OLLAMA_URL env var to point to a remote machine (e.g., a Mac with Apple Silicon)
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+# Ollama API URL -- defaults to the Mac Mini tailnet IP; override with
+# OLLAMA_URL env var to point to a different host.
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://100.124.228.102:11434")
 
 # ---------------------------------------------------------------------------
 # LLM Backends
@@ -59,7 +59,7 @@ def _call_claude(prompt: str, system: str = "") -> str:
 
         client = Anthropic(api_key=api_key)
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6",
             max_tokens=2048,
             system=system,
             messages=[{"role": "user", "content": prompt}],
