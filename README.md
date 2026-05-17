@@ -108,6 +108,41 @@ uv run python -m generators.python.render
 sudo containerlab deploy --topo containerlab/topology.yaml
 ```
 
+## Ollama Setup (Lab 7)
+
+Lab 7's AI assistant supports two backends. Use whichever fits your setup.
+
+**Option A: Claude API (cloud)**
+
+Set your Anthropic API key before running the assistant:
+
+```bash
+export ANTHROPIC_API_KEY="your-key-here"
+uv run python -m agent.assistant fabric-qa "Is the fabric healthy?"
+```
+
+**Option B: Ollama (local, free)**
+
+Install Ollama on the same machine running the labs:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull llama3.1:8b
+```
+
+Then run the assistant with the Ollama backend:
+
+```bash
+uv run python -m agent.assistant --backend ollama fabric-qa "Is the fabric healthy?"
+```
+
+By default the assistant connects to Ollama at `http://localhost:11434`. If Ollama is running on a different host, override it with the `OLLAMA_URL` environment variable:
+
+```bash
+export OLLAMA_URL=http://192.168.1.10:11434
+uv run python -m agent.assistant --backend ollama fabric-qa "Is the fabric healthy?"
+```
+
 ## Repository Structure
 
 ```

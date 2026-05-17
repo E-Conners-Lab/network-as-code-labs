@@ -135,23 +135,30 @@ step "Phase 7 (Lab 7): AI assistant"
 
 if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
     BACKEND="claude"
-else
-    echo "ANTHROPIC_API_KEY not set — falling back to Ollama backend"
+elif curl -sf "${OLLAMA_URL:-http://localhost:11434}/api/tags" > /dev/null 2>&1; then
+    echo "ANTHROPIC_API_KEY not set — using Ollama at ${OLLAMA_URL:-http://localhost:11434}"
     BACKEND="ollama"
+else
+    echo "WARNING: Neither ANTHROPIC_API_KEY nor Ollama is available."
+    echo "  Set ANTHROPIC_API_KEY, or install Ollama: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.1:8b"
+    echo "Skipping Lab 7."
+    BACKEND=""
 fi
 
-echo "--- fabric-qa: fabric health check ---"
-uv run python -m agent.assistant --backend "$BACKEND" fabric-qa "Is the fabric healthy? Summarise BGP and OSPF state."
+if [[ -n "$BACKEND" ]]; then
+    echo "--- fabric-qa: fabric health check ---"
+    uv run python -m agent.assistant --backend "$BACKEND" fabric-qa "Is the fabric healthy? Summarise BGP and OSPF state."
 
-echo ""
-echo "--- validation-assist: confirm no failures ---"
-uv run python -m agent.assistant --backend "$BACKEND" validation-assist
+    echo ""
+    echo "--- validation-assist: confirm no failures ---"
+    uv run python -m agent.assistant --backend "$BACKEND" validation-assist
 
-echo ""
-echo "--- drift-triage: confirm clean state ---"
-uv run python -m agent.assistant --backend "$BACKEND" drift-triage
+    echo ""
+    echo "--- drift-triage: confirm clean state ---"
+    uv run python -m agent.assistant --backend "$BACKEND" drift-triage
 
-ok "AI assistant exercises complete"
+    ok "AI assistant exercises complete"
+fi
 
 echo ""
 echo -e "${GREEN}${BOLD}Dry run complete. All 7 labs exercised successfully.${RESET}"

@@ -33,9 +33,9 @@ import httpx
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Ollama API URL -- defaults to the Mac Mini tailnet IP; override with
-# OLLAMA_URL env var to point to a different host.
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://100.124.228.102:11434")
+# Ollama API URL -- defaults to localhost. Override with OLLAMA_URL env var
+# to point to a remote host (e.g. export OLLAMA_URL=http://192.168.1.10:11434).
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 
 # ---------------------------------------------------------------------------
 # LLM Backends
